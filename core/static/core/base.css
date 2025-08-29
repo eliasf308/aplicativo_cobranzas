@@ -1,0 +1,73 @@
+/* base.css */
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f4f6f9;
+    color: #333;
+}
+
+.sidebar {
+    background-color: #003366;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar h4 {
+    padding-top: 20px;
+    text-align: center;
+    font-weight: 600;
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 20px;
+}
+
+.sidebar a {
+    color: #ffffff;
+    padding: 12px 20px;
+    font-size: 15px;
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar a:hover {
+    background-color: #004080;
+    border-left: 4px solid #ffffff;
+    padding-left: 24px;
+}
+
+.topbar {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.main-content {
+    padding: 30px;
+}
+
+.table thead th {
+    background-color: #004080;
+    color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #003366;
+    border-color: #003366;
+}
+
+.btn-primary:hover {
+    background-color: #004080;
+    border-color: #004080;
+}
+
+.alert-info {
+    background-color: #e7f3fe;
+    border-color: #b3d8fd;
+    color: #31708f;
+}
+
+/* 🔵 Fondo azul para títulos como "Detalle del Plan de Pago" */
+.bg-azul-promecor {
+    background-color: #0066ff !important;
+    color: white;
+}

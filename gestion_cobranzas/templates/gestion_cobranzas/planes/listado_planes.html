@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Listado de Planes de Pago</h2>
+
+    <form method="get" class="d-flex mb-3" role="search">
+        <input type="text" name="poliza" placeholder="Buscar por Póliza" value="{{ poliza_query }}" class="form-control me-2" style="max-width: 300px;">
+        <button type="submit" class="btn btn-primary me-2">Buscar</button>
+        <a href="{% url 'listar_planes' %}" class="btn btn-secondary me-2">Limpiar</a>
+    </form>
+
+    <!-- Botón de exportar a Excel -->
+    <form method="get" action="{% url 'exportar_planes_excel' %}" style="display:inline;">
+        {% if poliza_query %}
+            <input type="hidden" name="poliza" value="{{ poliza_query }}">
+        {% endif %}
+        <button type="submit" class="btn btn-success mb-3">Exportar a Excel</button>
+    </form>
+
+    {% if planes %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="text-white" style="background-color: #003366;">
+                <tr>
+                    <th>Aseguradora</th>
+                    <th>Ramo</th>
+                    <th>Póliza</th>
+                    <th>Endoso</th>
+                    <th>Moneda</th>
+                    <th>Cuotas</th>
+                    <th>Saldo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plan in planes %}
+                <tr>
+                    <td>{{ plan.aseguradora }}</td>
+                    <td>{{ plan.ramo }}</td>
+                    <td>{{ plan.poliza.numero }}</td>
+                    <td>{{ plan.endoso }}</td>
+                    <td>{{ plan.moneda }}</td>
+                    <td>{{ plan.cuotas.count }}</td>
+                    <td>{{ plan.moneda }} {{ plan.saldo|floatformat:2 }}</td>
+                    <td>
+                        <a href="{% url 'ver_cuotas_plan' plan.id %}" class="btn btn-outline-primary btn-sm">Ver Cuotas</a>
+                        <a href="{% url 'editar_plan' plan.id %}" class="btn btn-outline-secondary btn-sm">Editar Plan</a>
+                        <a href="{% url 'editar_cuotas_plan' plan.id %}" class="btn btn-outline-warning btn-sm">Editar Cuotas</a>
+                        <a href="{% url 'eliminar_plan' plan.id %}" class="btn btn-outline-danger btn-sm">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: bold; background-color: #e9ecef;">
+                    <td colspan="6" class="text-end">Total:</td>
+                    <td>${{ total_saldo|floatformat:2 }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info mt-4">No hay planes cargados o no se encontraron resultados.</div>
+    {% endif %}
+</div>
+{% endblock %}

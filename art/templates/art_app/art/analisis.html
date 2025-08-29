@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Análisis ART</h2>
+
+    <form method="get" class="d-flex align-items-center gap-2">
+      <label for="periodo" class="me-2 mb-0">Período</label>
+      <select id="periodo" name="periodo" class="form-select" style="min-width: 160px" onchange="this.form.submit()">
+        {% for p in available_periods %}
+          <option value="{{ p }}" {% if p == selected_period_str %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if not kpi %}
+    <div class="alert alert-warning">No hay datos cargados en el tablero (ArtDashboardContratoPeriodo).</div>
+  {% else %}
+
+    <!-- ====== SOLAPAS ====== -->
+    <ul class="nav nav-tabs" id="analisisTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-periodo" data-bs-toggle="tab" data-bs-target="#pane-periodo" type="button" role="tab" aria-controls="pane-periodo" aria-selected="true">
+          Período
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-historico" data-bs-toggle="tab" data-bs-target="#pane-historico" type="button" role="tab" aria-controls="pane-historico" aria-selected="false">
+          Histórico
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content mt-3" id="analisisTabsContent">
+      <!-- =========== PANE: PERÍODO =========== -->
+      <div class="tab-pane fade show active" id="pane-periodo" role="tabpanel" aria-labelledby="tab-periodo" tabindex="0">
+
+        <!-- KPIs -->
+        <div class="row g-3">
+          <!-- Deuda total -->
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">Deuda total (Q ≥ 1)</div>
+                <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.total_deuda }}">$ 0,00</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contratos con deuda -->
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">Contratos con deuda (Q ≥ 1)</div>
+                <div class="fs-4 fw-semibold js-int" data-value="{{ kpi.contratos_total }}">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Monto en riesgo (Q ≥ 2) -->
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">Monto en riesgo (Q ≥ 2)</div>
+                <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.monto_riesgo }}">$ 0,00</div>
+                <div class="small text-muted mt-1">
+                  <span class="js-int" data-value="{{ kpi.contratos_riesgo }}">0</span> contratos
+                  (<span class="js-pct" data-value="{{ kpi.pct_riesgo }}">0</span>%)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Meses de deuda promedio -->
+          <div class="col-12 col-md-6 col-lg-3">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">Meses de deuda promedio</div>
+                <div class="fs-4 fw-semibold js-float1" data-value="{{ kpi.meses_prom }}">0,0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clientes importantes -->
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">Clientes importantes</div>
+                <div class="d-flex align-items-baseline gap-2">
+                  <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.clientes_imp_monto }}">$ 0,00</div>
+                  <div class="small text-muted">(<span class="js-int" data-value="{{ kpi.clientes_imp_count }}">0</span> contratos)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Premier -->
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">Premier</div>
+                <div class="d-flex align-items-baseline gap-2">
+                  <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.premier_monto }}">$ 0,00</div>
+                  <div class="small text-muted">(<span class="js-int" data-value="{{ kpi.premier_count }}">0</span> contratos)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No contactar -->
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted">No contactar</div>
+                <div class="d-flex align-items-baseline gap-2">
+                  <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.no_contactar_monto }}">$ 0,00</div>
+                  <div class="small text-muted">(<span class="js-int" data-value="{{ kpi.no_contactar_count }}">0</span> contratos)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráficos del período -->
+        <div class="row g-3 mt-2">
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted mb-2">Distribución por Q períodos (deuda y contratos)</div>
+                <canvas id="chartBuckets" height="140"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted mb-2">Pareto de deuda por aseguradora</div>
+                <canvas id="chartAseg" height="140"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datos Período para JS -->
+        {{ chart_buckets|json_script:"chart-buckets-data" }}
+        {{ chart_aseg|json_script:"chart-aseg-data" }}
+      </div>
+
+      <!-- =========== PANE: HISTÓRICO =========== -->
+      <div class="tab-pane fade" id="pane-historico" role="tabpanel" aria-labelledby="tab-historico" tabindex="0">
+        <div class="row g-3">
+          <div class="col-12 col-lg-7">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted mb-2">Evolución de deuda total (Q ≥ 1) y monto en riesgo (Q ≥ 2)</div>
+                <canvas id="chartHistDeuda" height="160"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-5">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="small text-muted mb-2">% de contratos en riesgo (Q ≥ 2) sobre contratos con deuda (Q ≥ 1)</div>
+                <canvas id="chartHistPct" height="160"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datos Histórico para JS -->
+        {{ chart_hist|json_script:"chart-hist-data" }}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  // Parser robusto: maneja "", "None", "NaN", y formatos tipo $ 1.234.567,89
+  function parseNum(raw) {
+    if (raw === undefined || raw === null) return 0;
+    let s = String(raw).trim();
+    if (!s || s.toLowerCase() === "none" || s.toLowerCase() === "nan") return 0;
+    s = s.replace(/[^0-9,.\-]/g, '');
+    if (s.includes(",") && s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      s = s.replace(/\./g, "");
+      s = s.replace(",", ".");
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  const fmtMoney = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
+  const fmtInt   = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+  const fmtPct   = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
+  document.querySelectorAll('.js-money').forEach(el => {
+    const v = parseNum(el.dataset.value);
+    el.textContent = fmtMoney.format(v);
+  });
+  document.querySelectorAll('.js-int').forEach(el => {
+    const v = parseNum(el.dataset.value);
+    el.textContent = fmtInt.format(v);
+  });
+  document.querySelectorAll('.js-pct').forEach(el => {
+    const v = parseNum(el.dataset.value);
+    el.textContent = fmtPct.format(v);
+  });
+  document.querySelectorAll('.js-float1').forEach(el => {
+    const v = parseNum(el.dataset.value);
+    el.textContent = v.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  });
+</script>
+
+{% if kpi %}
+<script>
+  // ====== Datos Período ======
+  const dBuckets = JSON.parse(document.getElementById('chart-buckets-data').textContent);
+  const dAseg    = JSON.parse(document.getElementById('chart-aseg-data').textContent);
+  const fmtARS   = v => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(v);
+
+  // Buckets Q (barras + línea)
+  new Chart(document.getElementById('chartBuckets').getContext('2d'), {
+    data: {
+      labels: dBuckets.labels,
+      datasets: [
+        { type: 'bar',  label: 'Deuda (ARS)', data: dBuckets.monto, yAxisID: 'y' },
+        { type: 'line', label: 'Contratos',   data: dBuckets.contratos, yAxisID: 'y1', tension: 0.2 }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y:  { beginAtZero: true, ticks: { callback: fmtARS } },
+        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+      },
+      plugins: { legend: { display: true } }
+    }
+  });
+
+  // Pareto por aseguradora (barras + línea %)
+  new Chart(document.getElementById('chartAseg').getContext('2d'), {
+    data: {
+      labels: dAseg.labels,
+      datasets: [
+        { type: 'bar',  label: 'Deuda (ARS)',   data: dAseg.montos,   yAxisID: 'y' },
+        { type: 'line', label: '% acumulado',   data: dAseg.acum_pct, yAxisID: 'y1', tension: 0.2 }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y:  { beginAtZero: true, ticks: { callback: fmtARS } },
+        y1: { min: 0, max: 100, position: 'right', grid: { drawOnChartArea: false },
+              ticks: { callback: v => v + '%' } }
+      },
+      plugins: { legend: { display: true } }
+    }
+  });
+
+  // ====== Datos Histórico ======
+  const dHist = JSON.parse(document.getElementById('chart-hist-data').textContent);
+
+  // Evolución de deuda y monto en riesgo (líneas)
+  new Chart(document.getElementById('chartHistDeuda').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: dHist.labels,
+      datasets: [
+        { label: 'Deuda (Q ≥ 1)', data: dHist.deuda, tension: 0.2 },
+        { label: 'Monto en riesgo (Q ≥ 2)', data: dHist.monto_riesgo, tension: 0.2 }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, ticks: { callback: fmtARS } } },
+      plugins: { legend: { display: true } }
+    }
+  });
+
+  // % en riesgo (línea 0–100%)
+  new Chart(document.getElementById('chartHistPct').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: dHist.labels,
+      datasets: [ { label: '% en riesgo', data: dHist.pct_riesgo, tension: 0.2 } ]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { min:0, max:100, ticks:{ callback: v => v + '%' } } },
+      plugins: { legend: { display: true } }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Panel{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Panel</h1>
+    <div class="text-muted">Usuario: {{ request.user.get_username }}</div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h6">Carga de archivos</h2>
+          <p class="text-muted mb-2">Subí Excel y procesa datos.</p>
+          <a class="btn btn-sm btn-primary" href="/app/">Ir a la app</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h6">ART</h2>
+          <p class="text-muted mb-2">Módulo específico de ART.</p>
+          <a class="btn btn-sm btn-outline-primary" href="/art/">Abrir ART</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h6">Sesión</h2>
+          <p class="text-muted mb-2">Gestioná tu cuenta.</p>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'logout' %}">Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalle del Plan de Pago</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 30px;
+            color: #333;
+            background-color: #ffffff;
+        }
+        .header {
+            background-color: #dcdcdc;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .header h2, .header h4 {
+            margin: 0;
+            color: #000;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h3 {
+            background-color: #dcdcdc;
+            color: #000;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #888;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #003366;
+            color: white;
+        }
+        tfoot th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Detalle del Plan de Pago</h2>
+</div>
+
+<div class="section">
+    <p><strong>Aseguradora:</strong> {{ plan.aseguradora }}</p>
+    <p><strong>Ramo:</strong> {{ plan.ramo }}</p>
+    <p><strong>Póliza:</strong> {{ plan.poliza.numero }}</p>
+    <p><strong>Endoso:</strong> {{ plan.endoso }}</p>
+    <p><strong>ID Operación:</strong> {{ plan.aseguradora }}-{{ plan.ramo }}-{{ plan.poliza.numero }}-{{ plan.endoso }}</p>
+</div>
+
+<div class="section">
+    <h3>Resumen de Cuotas</h3>
+    <table>
+        <tr>
+            <th>Pagadas</th>
+            <th>Parciales</th>
+            <th>Impagas</th>
+            <th>Saldo Pendiente</th>
+        </tr>
+        <tr>
+            <td>{{ pagadas }}</td>
+            <td>{{ parciales }}</td>
+            <td>{{ impagas }}</td>
+            <td>${{ saldo_pendiente|floatformat:2 }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h3>Cuotas Asociadas</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Cuota</th>
+                <th>Vencimiento</th>
+                <th>Premio</th>
+                <th>Saldo</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cuota in cuotas %}
+            <tr>
+                <td>{{ cuota.numero }}</td>
+                <td>{{ cuota.vencimiento|date:"d/m/Y" }}</td>
+                <td>${{ cuota.importe_original|floatformat:2 }}</td>
+                <td>${{ cuota.importe|floatformat:2 }}</td>
+                <td>
+                    {% with saldo=cuota.importe importe_original=cuota.importe_original %}
+                        {% if saldo == 0 %}
+                            Pagada
+                        {% elif saldo < importe_original %}
+                            Parcial
+                        {% else %}
+                            Impaga
+                        {% endif %}
+                    {% endwith %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="2" style="text-align:right;">Totales:</th>
+                <th>${{ total_premio|floatformat:2 }}</th>
+                <th>${{ total_saldo|floatformat:2 }}</th>
+                <th>—</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+</body>
+</html>

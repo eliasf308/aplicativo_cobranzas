@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Buscador -->
+  <div class="card shadow-sm">
+    <div class="card-header" style="background-color: #dcdcdc;">
+      <h4 class="mb-0 text-dark">
+        <i class="bi bi-search me-2"></i>Consulta de cuenta
+      </h4>
+    </div>
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-6">
+          <label class="form-label">CUIT</label>
+          <input type="text" name="cuit" value="{{ cuit|default_if_none:'' }}" class="form-control" placeholder="Ej: 20437275158" required>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary">
+            Buscar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Panel de cuenta -->
+  {% if cuit %}
+  <div class="card shadow-sm mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background-color:#f1f5f9;">
+      <h5 class="mb-0">Cuenta • CUIT {{ cuit }}</h5>
+      {% if razon_social %}<span class="text-muted">{{ razon_social }}</span>{% endif %}
+    </div>
+    <div class="card-body">
+
+      <!-- Mails enviados (últimos 100) -->
+      <div class="mt-3">
+        <h6 class="mb-3">Mails enviados</h6>
+
+        {% if email_logs %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="white-space:nowrap;">Creado</th>
+                <th>Asunto</th>
+                <th style="white-space:nowrap;">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in email_logs %}
+              <tr>
+                <td style="white-space:nowrap;">{{ log.creado_en|date:"d/m/Y H:i" }}</td>
+                <td>{{ log.asunto }}</td>
+                <td>
+                  {% if log.estado == "enviado" %}
+                    <span class="badge bg-success-subtle text-success fw-semibold">Enviado</span>
+                  {% elif log.estado == "fallido" %}
+                    <span class="badge bg-danger-subtle text-danger fw-semibold">Fallido</span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary fw-semibold">{{ log.estado|capfirst }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="text-muted">No hay envíos registrados para este CUIT.</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

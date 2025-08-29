@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header" style="background-color: #dcdcdc;">
+            <h4 class="mb-0 text-dark">
+                <i class="bi bi-file-earmark-text me-2"></i>Detalle del Plan de Pago
+            </h4>
+        </div>
+        <div class="card-body">
+            <p><strong><i class="bi bi-building"></i> Aseguradora:</strong> {{ plan.aseguradora }}</p>
+            <p><strong><i class="bi bi-collection"></i> Ramo:</strong> {{ plan.ramo }}</p>
+            <p><strong><i class="bi bi-hash"></i> Póliza:</strong> {{ plan.poliza.numero }}</p>
+            <p><strong><i class="bi bi-tag-fill"></i> Endoso:</strong> {{ plan.endoso }}</p>
+            <p><strong><i class="bi bi-key"></i> ID operación:</strong> {{ plan.aseguradora }}-{{ plan.ramo }}-{{ plan.poliza.numero }}-{{ plan.endoso }}</p>
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    {% if cuotas %}
+    <div class="card shadow-sm">
+        <div class="card-header" style="background-color: #dcdcdc;">
+            <h5 class="mb-0 text-dark">
+                <i class="bi bi-bar-chart me-2"></i>Resumen de Cuotas
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3"><strong>Cuotas Pagadas:</strong> {{ pagadas }}</div>
+                <div class="col-md-3"><strong>Cuotas Parciales:</strong> {{ parciales }}</div>
+                <div class="col-md-3"><strong>Cuotas Impagas:</strong> {{ impagas }}</div>
+                <div class="col-md-3"><strong>Saldo pendiente:</strong> ${{ saldo_pendiente|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <hr class="my-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #dcdcdc;">
+            <h5 class="mb-0 text-dark">
+                <i class="bi bi-list-check me-2"></i>Cuotas asociadas
+            </h5>
+            <div>
+                <a href="{% url 'exportar_excel_cuotas' plan.id %}" class="btn btn-success btn-sm me-2">
+                    <i class="bi bi-file-earmark-excel-fill"></i> Excel
+                </a>
+                <a href="{% url 'exportar_pdf_cuotas' plan.id %}" class="btn btn-danger btn-sm">
+                    <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if cuotas %}
+                <div class="table-responsive">
+                    <table id="cuotas-table" class="table table-bordered mb-0 shadow-sm">
+                        <thead class="text-white" style="background-color: #003366;">
+                            <tr>
+                                <th>Cuota</th>
+                                <th>Vencimiento</th>
+                                <th>Premio</th>
+                                <th>Saldo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cuota in cuotas %}
+                                <tr style="transition: background-color 0.3s;">
+                                    <td>{{ cuota.numero }}</td>
+                                    <td>{{ cuota.vencimiento|date:"d/m/Y" }}</td>
+                                    <td>${{ cuota.importe_original|floatformat:2 }}</td>
+                                    <td>${{ cuota.importe|floatformat:2 }}</td>
+                                    <td>
+                                        {% with saldo=cuota.importe importe_original=cuota.importe_original %}
+                                            {% if saldo == 0 %}
+                                                <span class="badge bg-success rounded-pill">Pagada</span>
+                                            {% elif saldo < importe_original %}
+                                                <span class="badge bg-warning text-dark rounded-pill">Parcial</span>
+                                            {% else %}
+                                                <span class="badge bg-danger rounded-pill">Impaga</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-light">
+                            <tr>
+                                <th colspan="2" class="text-end">Total:</th>
+                                <th>${{ total_premio|floatformat:2 }}</th>
+                                <th>${{ total_saldo|floatformat:2 }}</th>
+                                <th>—</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info m-3">No hay cuotas cargadas para este plan.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4 text-end">
+        <a href="{% url 'listar_planes' %}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Volver al listado
+        </a>
+    </div>
+</div>
+
+<!-- DataTables config sin paginación ni buscador -->
+<script>
+    $(document).ready(function () {
+        $('#cuotas-table').DataTable({
+            paging: false,
+            searching: false,
+            info: false,
+            ordering: true,
+            language: {
+                decimal: ",",
+                thousands: ".",
+                zeroRecords: "No hay registros disponibles",
+                emptyTable: "No hay datos para mostrar"
+            },
+            dom: 't'  // Solo muestra la tabla, sin controles
+        });
+    });
+</script>
+
+<style>
+.table tbody tr:hover {
+    background-color: #f2f2f2;
+}
+.badge {
+    border-radius: 0.6rem;
+    padding: 0.4em 0.8em;
+}
+.btn-sm {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}

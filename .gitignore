@@ -1,0 +1,22 @@
+# entornos / cachés
+env/
+.venv/
+__pycache__/
+*.pyc
+
+# credenciales / secretos
+.genv
+.env
+.gmail_credentials/
+*.json
+*.pem
+
+# artefactos locales
+staticfiles/
+*.log
+*.sqlite3
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.vscode/

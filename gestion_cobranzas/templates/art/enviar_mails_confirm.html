@@ -1,0 +1,116 @@
+{# templates/art/enviar_mails_confirm.html #}
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-4" style="max-width:850px;">
+
+  <h2 class="mb-3">
+    <i class="bi bi-envelope-check me-2"></i>
+    Confirmar envío – {{ hoja }} ({{ periodo }})
+  </h2>
+
+  <p class="lead">
+    Se generarán <strong>{{ grupos|length }}</strong> correos electrónicos.
+  </p>
+
+  <table class="table table-sm table-bordered align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>E-mail</th>
+        <th class="text-center">Contratos</th>
+        <th class="text-center">Intimado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in grupos %}
+      <tr>
+        <td>{{ g.email }}</td>
+        <td class="text-center">{{ g.filas|length }}</td>
+        <td class="text-center">
+          {% if g.intimado %}
+            <span class="badge bg-danger">Sí</span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {# ---------  FORMULARIO  --------- #}
+  <form id="confirm-form" method="post">
+    {% csrf_token %}
+    <button id="btn-enviar" name="confirmar" value="1" class="btn btn-primary">
+      <i class="bi bi-send-check me-1"></i> Enviar ahora
+    </button>
+    <a href="{% url 'art:art_enviar_mails' %}?reset=1" class="btn btn-secondary ms-2">
+      Volver
+    </a>
+  </form>
+
+  {# ---------  BARRA de PROGRESO (oculta al inicio) --------- #}
+  <div id="progreso-wrap" class="mt-4" style="display:none;">
+    <div class="progress" style="height:24px;">
+      <div id="barra" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">
+        0 %
+      </div>
+    </div>
+    <p class="text-center mt-2" id="progreso-text"></p>
+  </div>
+
+</div>
+
+
+{# ---------  SCRIPT  --------- #}
+<script>
+document.getElementById("confirm-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();                       // evita recarga
+  const btn   = document.getElementById("btn-enviar");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Encolando…';
+
+  // POST vía fetch
+  const resp = await fetch(ev.target.action, {
+      method: "POST",
+      headers: {"X-Requested-With":"XMLHttpRequest"},
+      body: new FormData(ev.target)
+  });
+  if (!resp.ok) {
+      alert("Error en el servidor – revisá la consola.");
+      console.error(await resp.text());
+      return;
+  }
+  const data = await resp.json();   // {ids:[…], total:400}
+
+  // mostrar barra
+  const wrap  = document.getElementById("progreso-wrap");
+  const barra = document.getElementById("barra");
+  const label = document.getElementById("progreso-text");
+  wrap.style.display = "";
+
+  const idsParam = data.ids.join(",");
+  const total    = data.total;
+
+  async function tick() {
+      const r = await fetch(`/art/envio-estado/?ids=${idsParam}`);
+      if (!r.ok) { setTimeout(tick, 4000); return; }
+      const j = await r.json();               // {total, enviados}
+      const pct = Math.round(100 * j.enviados / total);
+      barra.style.width = pct + "%";
+      barra.textContent = pct + " %";
+      label.textContent = `Enviados ${j.enviados} de ${total}`;
+
+      if (j.enviados < total) {
+          setTimeout(tick, 4000);             // sigue
+      } else {
+          barra.classList.remove("progress-bar-animated");
+          barra.classList.add("bg-success");
+          btn.remove();                       // oculta el botón
+          label.textContent = "¡Listo! Todos los correos enviados.";
+      }
+  }
+  tick();
+});
+</script>
+{% endblock %}

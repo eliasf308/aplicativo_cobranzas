@@ -1,0 +1,17 @@
+Estimado/a {{ contratos.0.razon_social }},
+
+Desde Promecor te informamos que al {{ envio.fecha_archivo|date:"m/Y" }} registramos la siguiente deuda de
+ART:
+
+{% for c in contratos %}
+  - Contrato: {{ c.contrato }}
+    Aseguradora: {{ c.aseguradora }}
+    Deuda: ${{ c.deuda_total|floatformat:2 }}
+    Q períodos: {{ c.q_periodos }}{% if c.intimado %}  (INTIMADO){% endif %}
+{% endfor %}
+
+Si corresponde, generá el VEP de pago (Impuesto 312, Concepto 19, Subconcepto 19/51) y enviá el
+comprobante para actualizar el saldo.
+
+Muchas gracias.
+Promecor – Cobranzas
