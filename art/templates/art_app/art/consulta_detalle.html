@@ -13,7 +13,7 @@
     </a>
   {% else %}
 
-    <!-- HEADER ESTÉTICO (badges anclados abajo/derecha) -->
+    <!-- HEADER -->
     <div class="card shadow-sm mb-3 border-0" style="overflow:hidden;">
       <div class="px-3 py-3 position-relative d-flex align-items-center"
            style="background:#003366;color:#fff;">
@@ -26,7 +26,6 @@
           <div class="text-white-50" style="font-size:.95rem;">CUIT: {{ cuit }}</div>
         </div>
 
-        <!-- BADGES: esquina inferior derecha -->
         <div class="position-absolute" style="right:12px; bottom:10px;">
           {% if badges.no_contactar %}
             <span class="badge bg-danger me-2">No contactar</span>
@@ -54,7 +53,7 @@
 
           <div class="col-md-4"><strong>Q períodos deudores:</strong> {{ q_periodos_deudores|default:"—" }}</div>
           <div class="col-md-4"><strong>Estado contrato:</strong> {{ estado_contrato|default:"—" }}</div>
-          <div class="col-md-4"><strong>Productor:</strong> {{ productor|default:"—" }}</div>
+          <div class="col-md-4"><strong>Productor:</strong> {{ productor|default:"PROMECOR" }}</div>
 
           <div class="col-md-6"><strong>Email del trato:</strong> {{ email_trato|default:"—" }}</div>
         </div>
@@ -103,6 +102,16 @@
             <canvas id="evolChart" height="140"></canvas>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- COMBO: Variación mensual (Δ) + Q períodos -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header" style="background-color:#dcdcdc;">
+        <strong>Variación mensual (Δ) y Q períodos</strong>
+      </div>
+      <div class="card-body">
+        <canvas id="comboChart" height="110"></canvas>
       </div>
     </div>
 
@@ -162,6 +171,8 @@
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Gráfico línea (curva) de Evolución -->
     <script>
       (function () {
         const labels = JSON.parse('{{ evol_labels_json|escapejs }}');
@@ -169,11 +180,130 @@
         const canvas = document.getElementById('evolChart');
         if (!canvas || !Array.isArray(labels) || !Array.isArray(values) || labels.length === 0) return;
         const ctx = canvas.getContext('2d');
+
+        const fmtARS = (n) => {
+          try { return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n); }
+          catch { return '$ ' + (n ?? 0).toLocaleString('es-AR'); }
+        };
+
         new Chart(ctx, {
           type: 'line',
-          data: { labels, datasets: [{ label: 'Deuda', data: values, fill: false, tension: 0.25 }] },
-          options: { plugins: { legend: { display: false } },
-                     scales: { x: { ticks: { autoSkip: true, maxTicksLimit: 6 } }, y: { beginAtZero: true } } }
+          data: {
+            labels,
+            datasets: [{
+              label: 'Deuda',
+              data: values,
+              fill: false,
+              cubicInterpolationMode: 'monotone',
+              tension: 0.4
+            }]
+          },
+          options: {
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => 'Deuda: ' + fmtARS(c.parsed.y) } } },
+            scales: {
+              x: { ticks: { autoSkip: true, maxTicksLimit: 6 } },
+              y: { beginAtZero: true, ticks: { callback: (v) => fmtARS(v) } }
+            }
+          }
+        });
+      })();
+    </script>
+
+    <!-- Gráfico combinado: Barras (Δ) + Línea Q -->
+    <script>
+      (function () {
+        const labels = JSON.parse('{{ evol_labels_json|escapejs }}');
+        const values = JSON.parse('{{ evol_values_json|escapejs }}');
+        const el = document.getElementById('comboChart');
+        if (!el || !Array.isArray(labels) || !Array.isArray(values) || !labels.length) return;
+
+        // Δ vs mes anterior
+        const diffs = values.map((v, i) => i === 0 ? null : +(v - values[i - 1]).toFixed(2));
+        const abs = (n) => Math.abs(n ?? 0);
+        const maxAbs = Math.max(0, ...diffs.filter(v => v !== null).map(abs));
+
+        // Colores por signo
+        const bg = diffs.map(v =>
+          v == null ? 'rgba(0,0,0,0)' : (v >= 0 ? 'rgba(46,160,67,0.6)' : 'rgba(219,54,54,0.6)')
+        );
+        const bd = diffs.map(v =>
+          v == null ? 'rgba(0,0,0,0)' : (v >= 0 ? 'rgba(46,160,67,1)'   : 'rgba(219,54,54,1)')
+        );
+
+        const fmtARS = (n) => {
+          try { return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n); }
+          catch { return '$ ' + (n ?? 0).toLocaleString('es-AR'); }
+        };
+        const fmtSignARS = (n) => (n > 0 ? '+' : '') + fmtARS(n);
+
+        // Q (opcional)
+        let qValues = null;
+        try { qValues = JSON.parse('{{ q_values_json|default:"null"|escapejs }}'); } catch {}
+        const hasQ = Array.isArray(qValues) && qValues.length === labels.length;
+
+        new Chart(el.getContext('2d'), {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'Δ Deuda vs mes anterior',
+                data: diffs,
+                yAxisID: 'y',
+                backgroundColor: bg,
+                borderColor: bd,
+                borderWidth: 1,
+                barPercentage: 0.55,
+                categoryPercentage: 0.7
+              },
+              ...(hasQ ? [{
+                type: 'line',
+                label: 'Q períodos deudores',
+                data: qValues,
+                yAxisID: 'y1',
+                cubicInterpolationMode: 'monotone',
+                tension: 0.4,
+                spanGaps: true
+              }] : [])
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: true, position: 'bottom' },
+              tooltip: {
+                callbacks: {
+                  label: (c) => {
+                    const name = c.dataset.label || '';
+                    const y = c.parsed.y;
+                    return name + ': ' + (c.dataset.type === 'bar' ? fmtSignARS(y) : (y ?? ''));
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { ticks: { autoSkip: true, maxTicksLimit: 6 } },
+              y: {
+                beginAtZero: true,
+                suggestedMin: -maxAbs * 1.15,
+                suggestedMax:  maxAbs * 1.15,
+                grid: {
+                  color: ctx => (ctx.tick.value === 0 ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.06)'),
+                  lineWidth: ctx => (ctx.tick.value === 0 ? 1.2 : 0.6)
+                },
+                ticks: { callback: (v) => fmtARS(v) }
+              },
+              y1: {
+                position: 'right',
+                beginAtZero: true,
+                grid: { drawOnChartArea: false },
+                suggestedMax: 12,
+                display: hasQ
+              }
+            }
+          }
         });
       })();
     </script>

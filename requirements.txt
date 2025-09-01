@@ -1,7 +1,12 @@
 Django==5.2
 gunicorn==22.0.0
 whitenoise==6.7.0
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
 celery==5.4.0
 redis==5.0.4
 django-celery-results==2.5.1
+openpyxl==3.1.5
+XlsxWriter==3.2.5
+weasyprint==65.1
+pandas==2.2.3
+lxml==5.4.0

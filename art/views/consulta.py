@@ -80,6 +80,21 @@ def _is_true_strict(v: object) -> bool:
     return s in _TRUE_TOKENS
 
 
+# ---------- parseo robusto de Q períodos ----------
+def _to_float_q(v):
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    # AR: quitar miles y pasar coma a punto
+    s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
 @login_required
 def consulta_detalle_view(request: HttpRequest, cuit: str):
     cuit = (cuit or "").strip()
@@ -87,9 +102,11 @@ def consulta_detalle_view(request: HttpRequest, cuit: str):
         raise Http404("CUIT no provisto")
 
     # Solo hoja "consolidado"
-    qs_all = (ConsolidadoItem.objects
-              .filter(cuit=cuit, hoja="consolidado")
-              .order_by("-periodo", "-deuda_total"))
+    qs_all = (
+        ConsolidadoItem.objects
+        .filter(cuit=cuit, hoja="consolidado")
+        .order_by("-periodo", "-deuda_total")
+    )
 
     if not qs_all.exists():
         return render(request, "art_app/art/consulta_detalle.html", {
@@ -228,11 +245,29 @@ def consulta_detalle_view(request: HttpRequest, cuit: str):
     evolucion_tabla = [{"periodo": lab, "deuda": _format_ars(Decimal(v))}
                        for lab, v in zip(evol_labels, evol_values)]
 
+    # ---------- Serie histórica de Q períodos (último no vacío por período) ----------
+    q_per_map: Dict[str, float] = {}
+    # Recorremos cronológicamente para que prevalezca el último valor del mismo período
+    for it in sorted(qs_all, key=lambda x: (x.periodo, getattr(x, "id", 0))):
+        if not it.periodo:
+            continue
+        key = it.periodo.strftime("%m-%Y")
+        q_val = getattr(it, "q_periodos_deudores", None)
+        if q_val in (None, ""):
+            q_val = _get_from_extra(it.extra, _QPER_KEYS)
+        q_num = _to_float_q(q_val)
+        if q_num is not None:
+            q_per_map[key] = q_num
+
+    q_values = [q_per_map.get(k, None) for k in evol_labels]  # alineado a las etiquetas del gráfico
+
     # ---------- Emails enviados ----------
-    emails = (EnvioEmailLog.objects
-              .filter(cuit=cuit)
-              .order_by("-creado_en")
-              .values("creado_en", "asunto", "estado", "destinatarios", "error"))
+    emails = (
+        EnvioEmailLog.objects
+        .filter(cuit=cuit)
+        .order_by("-creado_en")
+        .values("creado_en", "asunto", "estado", "destinatarios", "error")
+    )
 
     contexto = {
         "titulo": titulo,
@@ -253,4 +288,9 @@ def consulta_detalle_view(request: HttpRequest, cuit: str):
         "emails": emails,
         "format_ars": _format_ars,
     }
+
+    # Solo agregamos q_values_json si hay al menos un dato
+    if any(v is not None for v in q_values):
+        contexto["q_values_json"] = json.dumps(q_values)
+
     return render(request, "art_app/art/consulta_detalle.html", contexto)
