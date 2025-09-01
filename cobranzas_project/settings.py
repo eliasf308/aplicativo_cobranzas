@@ -17,11 +17,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-replace-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
-# Detectar si estamos en GitHub Codespaces
+# ¿Estamos en GitHub Codespaces?
 IS_CODESPACES = bool(os.getenv("CODESPACES") or os.getenv("GITHUB_CODESPACES"))
 CODESPACE_NAME = os.getenv("CODESPACE_NAME")
 
-# Hosts permitidos (incluye IPs locales, Codespaces y Cloudflare Tunnel + dominio estable)
+# Hosts permitidos (local, Codespaces y Cloudflare Tunnel + dominio estable)
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
@@ -29,13 +29,13 @@ ALLOWED_HOSTS = [
     "172.25.48.1",     # IP virtual/VPN si aplica
     "190.2.6.169",     # tu IP pública (si aplica)
     ".app.github.dev", # subdominios públicos de Codespaces
-    ".trycloudflare.com",  # subdominios efímeros del túnel de Cloudflare
-    "app.promecorcobranzas.com",  # dominio estable via Named Tunnel
+    ".trycloudflare.com",        # subdominios efímeros del túnel de Cloudflare
+    "app.promecorcobranzas.com", # dominio estable via Named Tunnel
 ]
 if CODESPACE_NAME:
     ALLOWED_HOSTS.append(f"{CODESPACE_NAME}.app.github.dev")
 
-# CSRF detrás de proxy (Codespaces y Cloudflare Tunnel + dominio estable)
+# CSRF desde proxy (Codespaces, Quick Tunnel y dominio estable)
 CSRF_TRUSTED_ORIGINS = [
     "https://*.app.github.dev",
     "https://*.trycloudflare.com",
@@ -106,8 +106,8 @@ TEMPLATES = [
 
 # ---------------------------------------------------------------------
 # Base de datos
-#  - Local: PostgreSQL (como tenías)
-#  - Codespaces: SQLite (para demo sin depender de Postgres)
+#   - Local: PostgreSQL (por defecto)
+#   - Codespaces: SQLite (para demo)
 # ---------------------------------------------------------------------
 if IS_CODESPACES:
     DATABASES = {
