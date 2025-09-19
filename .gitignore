@@ -20,3 +20,8 @@ staticfiles/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Windows metadata
+**/desktop.ini
+**/Thumbs.db
+
