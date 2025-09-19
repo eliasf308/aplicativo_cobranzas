@@ -16,287 +16,942 @@
     </form>
   </div>
 
-  {% if not kpi %}
-    <div class="alert alert-warning">No hay datos cargados en el tablero (ArtDashboardContratoPeriodo).</div>
-  {% else %}
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" id="analisisTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-periodo" data-bs-toggle="tab" data-bs-target="#pane-periodo" type="button" role="tab" aria-controls="pane-periodo" aria-selected="true">Período</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-historico" data-bs-toggle="tab" data-bs-target="#pane-historico" type="button" role="tab" aria-controls="pane-historico" aria-selected="false">Histórico</button>
+    </li>
+  </ul>
 
-    <!-- ====== SOLAPAS ====== -->
-    <ul class="nav nav-tabs" id="analisisTabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tab-periodo" data-bs-toggle="tab" data-bs-target="#pane-periodo" type="button" role="tab" aria-controls="pane-periodo" aria-selected="true">
-          Período
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-historico" data-bs-toggle="tab" data-bs-target="#pane-historico" type="button" role="tab" aria-controls="pane-historico" aria-selected="false">
-          Histórico
-        </button>
-      </li>
-    </ul>
+  <div class="tab-content mt-3" id="analisisTabsContent">
 
-    <div class="tab-content mt-3" id="analisisTabsContent">
-      <!-- =========== PANE: PERÍODO =========== -->
-      <div class="tab-pane fade show active" id="pane-periodo" role="tabpanel" aria-labelledby="tab-periodo" tabindex="0">
+    <!-- ================= PANE: PERÍODO ================= -->
+    <div class="tab-pane fade show active" id="pane-periodo" role="tabpanel" aria-labelledby="tab-periodo" tabindex="0">
 
-        <!-- KPIs -->
-        <div class="row g-3">
-          <!-- Deuda total -->
-          <div class="col-12 col-md-6 col-lg-3">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">Deuda total (Q ≥ 1)</div>
-                <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.total_deuda }}">$ 0,00</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Contratos con deuda -->
-          <div class="col-12 col-md-6 col-lg-3">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">Contratos con deuda (Q ≥ 1)</div>
-                <div class="fs-4 fw-semibold js-int" data-value="{{ kpi.contratos_total }}">0</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Monto en riesgo (Q ≥ 2) -->
-          <div class="col-12 col-md-6 col-lg-3">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">Monto en riesgo (Q ≥ 2)</div>
-                <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.monto_riesgo }}">$ 0,00</div>
-                <div class="small text-muted mt-1">
-                  <span class="js-int" data-value="{{ kpi.contratos_riesgo }}">0</span> contratos
-                  (<span class="js-pct" data-value="{{ kpi.pct_riesgo }}">0</span>%)
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Meses de deuda promedio -->
-          <div class="col-12 col-md-6 col-lg-3">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">Meses de deuda promedio</div>
-                <div class="fs-4 fw-semibold js-float1" data-value="{{ kpi.meses_prom }}">0,0</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Clientes importantes -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">Clientes importantes</div>
-                <div class="d-flex align-items-baseline gap-2">
-                  <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.clientes_imp_monto }}">$ 0,00</div>
-                  <div class="small text-muted">(<span class="js-int" data-value="{{ kpi.clientes_imp_count }}">0</span> contratos)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Premier -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">Premier</div>
-                <div class="d-flex align-items-baseline gap-2">
-                  <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.premier_monto }}">$ 0,00</div>
-                  <div class="small text-muted">(<span class="js-int" data-value="{{ kpi.premier_count }}">0</span> contratos)</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- No contactar -->
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted">No contactar</div>
-                <div class="d-flex align-items-baseline gap-2">
-                  <div class="fs-4 fw-semibold js-money" data-value="{{ kpi.no_contactar_monto }}">$ 0,00</div>
-                  <div class="small text-muted">(<span class="js-int" data-value="{{ kpi.no_contactar_count }}">0</span> contratos)</div>
-                </div>
-              </div>
-            </div>
-          </div>
+      <!-- KPIs fila 1 -->
+      <div class="row g-3">
+        <div class="col-12 col-md-6 col-lg-3">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">Deuda total (Q ≥ 1)</div>
+            <h4 class="mb-0">$ {{ kpi.deuda_total|floatformat:2 }}</h4>
+          </div></div>
         </div>
-
-        <!-- Gráficos del período -->
-        <div class="row g-3 mt-2">
-          <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted mb-2">Distribución por Q períodos (deuda y contratos)</div>
-                <canvas id="chartBuckets" height="140"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted mb-2">Pareto de deuda por aseguradora</div>
-                <canvas id="chartAseg" height="140"></canvas>
-              </div>
-            </div>
-          </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">Monto en riesgo (Q ≥ 3)</div>
+            <h4 class="mb-0">$ {{ kpi.monto_riesgo|floatformat:2 }}</h4>
+          </div></div>
         </div>
-
-        <!-- Datos Período para JS -->
-        {{ chart_buckets|json_script:"chart-buckets-data" }}
-        {{ chart_aseg|json_script:"chart-aseg-data" }}
+        <div class="col-12 col-md-6 col-lg-3">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">% en riesgo</div>
+            <h4 class="mb-0">{{ kpi.pct_riesgo|floatformat:1 }}%</h4>
+          </div></div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">Meses promedio (Q)</div>
+            <h4 class="mb-0">{{ kpi.meses_prom|floatformat:2 }}</h4>
+          </div></div>
+        </div>
       </div>
 
-      <!-- =========== PANE: HISTÓRICO =========== -->
-      <div class="tab-pane fade" id="pane-historico" role="tabpanel" aria-labelledby="tab-historico" tabindex="0">
-        <div class="row g-3">
-          <div class="col-12 col-lg-7">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted mb-2">Evolución de deuda total (Q ≥ 1) y monto en riesgo (Q ≥ 2)</div>
-                <canvas id="chartHistDeuda" height="160"></canvas>
+      <!-- KPIs fila 2 (deuda ↑ rojo, ↓ verde) -->
+      <div class="row g-3 mt-1">
+        <!-- MoM -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">Variación vs mes anterior (MoM)</div>
+            {% with val=kpi.mom_pct %}
+              {% if val is not None %}
+                <h4 class="mb-0">
+                  {% if val > 0 %}
+                    <span class="text-danger"><i class="bi bi-arrow-up-right"></i> {{ val|floatformat:1 }}%</span>
+                  {% elif val < 0 %}
+                    <span class="text-success"><i class="bi bi-arrow-down-right"></i> {{ val|floatformat:1 }}%</span>
+                  {% else %}
+                    <span class="text-muted"><i class="bi bi-dash"></i> 0.0%</span>
+                  {% endif %}
+                </h4>
+              {% else %}<h4 class="mb-0 text-muted">N/A</h4>{% endif %}
+            {% endwith %}
+          </div></div>
+        </div>
+        <!-- Tendencia 6M -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">Tendencia 6M (pendiente mensual)</div>
+            {% with val=kpi.trend6m_pct %}
+              {% if val is not None %}
+                <h4 class="mb-0">
+                  {% if val > 0 %}
+                    <span class="text-danger"><i class="bi bi-trending-up"></i> {{ val|floatformat:2 }}%</span>
+                  {% elif val < 0 %}
+                    <span class="text-success"><i class="bi bi-trending-down"></i> {{ val|floatformat:2 }}%</span>
+                  {% else %}
+                    <span class="text-muted"><i class="bi bi-dash"></i> 0.00%</span>
+                  {% endif %}
+                </h4>
+              {% else %}<h4 class="mb-0 text-muted">N/A</h4>{% endif %}
+            {% endwith %}
+          </div></div>
+        </div>
+        <!-- YoY -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="small text-muted">Variación interanual (YoY)</div>
+            {% with val=kpi.yoy_pct %}
+              {% if val is not None %}
+                <h4 class="mb-0">
+                  {% if val > 0 %}
+                    <span class="text-danger"><i class="bi bi-graph-up-arrow"></i> {{ val|floatformat:1 }}%</span>
+                  {% elif val < 0 %}
+                    <span class="text-success"><i class="bi bi-graph-down-arrow"></i> {{ val|floatformat:1 }}%</span>
+                  {% else %}
+                    <span class="text-muted"><i class="bi bi-dash"></i> 0.0%</span>
+                  {% endif %}
+                </h4>
+              {% else %}<h4 class="mb-0 text-muted">N/A</h4>{% endif %}
+            {% endwith %}
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Gráficos del Período -->
+      <div class="row g-3 mt-2">
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="small text-muted mb-2">Distribución por Q</div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-placement="auto" data-bs-title="¿Qué muestra?" data-bs-content="Deuda y cantidad de contratos por severidad de mora (Q). Útil para ver el mix de riesgo del período."><i class="bi bi-info-circle"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartBuckets','Distribución por Q')"><i class="bi bi-magic"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartBuckets')" title="Copiar PNG"><i class="bi bi-clipboard"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalBuckets" title="Maximizar"><i class="bi bi-arrows-fullscreen"></i></button>
+                </div>
               </div>
-            </div>
-          </div>
-          <div class="col-12 col-lg-5">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="small text-muted mb-2">% de contratos en riesgo (Q ≥ 2) sobre contratos con deuda (Q ≥ 1)</div>
-                <canvas id="chartHistPct" height="160"></canvas>
-              </div>
+              <canvas id="chartBuckets" height="170"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- Datos Histórico para JS -->
-        {{ chart_hist|json_script:"chart-hist-data" }}
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="small text-muted mb-2">Pareto por aseguradora (Top 10 + Otros)</div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Concentración de deuda por Aseguradora en ARS y su acumulado %. Sirve para ver cuánto explican los líderes."><i class="bi bi-info-circle"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartAseg','Pareto por Aseguradora')"><i class="bi bi-magic"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartAseg')" title="Copiar PNG"><i class="bi bi-clipboard"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalAseg" title="Maximizar"><i class="bi bi-arrows-fullscreen"></i></button>
+                </div>
+              </div>
+              <canvas id="chartAseg" height="170"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- Productor apilado & Torta Aseguradora -->
+      <div class="row g-3 mt-2">
+        <!-- Apiladas Productor -->
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="small text-muted mb-2">Deuda por Productor (apilada por severidad Q) — Top 10</div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Deuda por Productor desagregada por severidad (Q). Ayuda a ver volumen y mix de mora por Productor."><i class="bi bi-info-circle"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartProdStack','Deuda por Productor (apilada)')"><i class="bi bi-magic"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartProdStack')" title="Copiar PNG"><i class="bi bi-clipboard"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalProdStack" title="Maximizar"><i class="bi bi-arrows-fullscreen"></i></button>
+                </div>
+              </div>
+              <canvas id="chartProdStack" height="170"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Torta Aseguradora -->
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="small text-muted mb-2">Participación por Aseguradora (torta) — Top 10 + Otros</div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Participación de deuda por Aseguradora. Útil para ver el reparto y la concentración del período."><i class="bi bi-info-circle"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartAsegPie','Participación por Aseguradora (torta)')"><i class="bi bi-magic"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartAsegPie')" title="Copiar PNG"><i class="bi bi-clipboard"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalAsegPie" title="Maximizar"><i class="bi bi-arrows-fullscreen"></i></button>
+                </div>
+              </div>
+              <canvas id="chartAsegPie" height="170"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos Período -->
+      {{ chart_buckets|json_script:"chart-buckets-data" }}
+      {{ chart_aseg|json_script:"chart-aseg-data" }}
+      {{ chart_prod_stack|json_script:"chart-prodstack-data" }}
+      {{ chart_aseg_pie|json_script:"chart-aseg-pie-data" }}
     </div>
-  {% endif %}
+
+    <!-- ================= PANE: HISTÓRICO ================= -->
+    <div class="tab-pane fade" id="pane-historico" role="tabpanel" aria-labelledby="tab-historico" tabindex="0">
+      <div class="row g-3">
+        <div class="col-12 col-lg-8">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="small text-muted mb-2">Deuda total (histórico)</div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Serie mensual de deuda total. Permite ver tendencia, rachas y saltos de nivel."><i class="bi bi-info-circle"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartHistDeuda','Deuda total (histórico)')"><i class="bi bi-magic"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartHistDeuda')"><i class="bi bi-clipboard"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalHistDeuda"><i class="bi bi-arrows-fullscreen"></i></button>
+              </div>
+            </div>
+            <canvas id="chartHistDeuda" height="170"></canvas>
+          </div></div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="small text-muted mb-2">% en riesgo (histórico)</div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Porcentaje de la deuda en riesgo (Q ≥ 3) por período. Detecta rachas y meses atípicos por variación."><i class="bi bi-info-circle"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartHistPct','% en riesgo (histórico)')"><i class="bi bi-magic"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartHistPct')"><i class="bi bi-clipboard"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalHistPct"><i class="bi bi-arrows-fullscreen"></i></button>
+              </div>
+            </div>
+            <canvas id="chartHistPct" height="170"></canvas>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Lado a lado Productor TOP 5 y Aseguradora TOP 5 -->
+      <div class="row g-3 mt-1">
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="small text-muted mb-2">Evolución de deuda por Productor TOP 5</div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Líneas por Productor (Top 5 en ARS) para ver evolución, picos, rachas y outliers mensuales."><i class="bi bi-info-circle"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartHistProdLines','Evolución por Productor TOP 5')"><i class="bi bi-magic"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartHistProdLines')"><i class="bi bi-clipboard"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalHistProdLines"><i class="bi bi-arrows-fullscreen"></i></button>
+              </div>
+            </div>
+            <canvas id="chartHistProdLines" height="170"></canvas>
+          </div></div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="small text-muted mb-2">Evolución de deuda por Aseguradora TOP 5</div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-title="¿Qué muestra?" data-bs-content="Líneas por Aseguradora (Top 5) con detección de rachas y outliers por variación mensual."><i class="bi bi-info-circle"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="autoExplain('chartHistAsegLines','Evolución por Aseguradora TOP 5')"><i class="bi bi-magic"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyPNG('chartHistAsegLines')"><i class="bi bi-clipboard"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalHistAsegLines"><i class="bi bi-arrows-fullscreen"></i></button>
+              </div>
+            </div>
+            <canvas id="chartHistAsegLines" height="170"></canvas>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Datos Histórico -->
+      {{ chart_hist|json_script:"chart-hist-data" }}
+      {{ chart_hist_prod_lines|json_script:"chart-hist-prodlines-data" }}
+      {{ chart_hist_aseg_lines|json_script:"chart-hist-aseglines-data" }}
+    </div>
+  </div>
 </div>
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- ================= Modales de maximización ================= -->
+<!-- Buckets -->
+<div class="modal fade" id="modalBuckets" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Distribución por Q</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartBucketsFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Pareto Aseguradora -->
+<div class="modal fade" id="modalAseg" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Pareto por aseguradora (Top 10 + Otros)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartAsegFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Productor apilado (Período) -->
+<div class="modal fade" id="modalProdStack" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Deuda por Productor (apilada por severidad Q) — Top 10</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartProdStackFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Torta Aseguradora (Período) -->
+<div class="modal fade" id="modalAsegPie" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Participación por Aseguradora (torta) — Top 10 + Otros</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartAsegPieFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Histórico: Deuda total -->
+<div class="modal fade" id="modalHistDeuda" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Deuda total (histórico)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartHistDeudaFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Histórico: % en riesgo -->
+<div class="modal fade" id="modalHistPct" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">% en riesgo (histórico)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartHistPctFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Histórico — Líneas Top 5 por Productor -->
+<div class="modal fade" id="modalHistProdLines" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Evolución de deuda por Productor TOP 5</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartHistProdLinesFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- Histórico — Líneas Top 5 por Aseguradora -->
+<div class="modal fade" id="modalHistAsegLines" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Evolución de deuda por Aseguradora TOP 5</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body"><canvas id="chartHistAsegLinesFull" style="width:100%; height:60vh;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Explicación automática ===== -->
+<div class="modal fade" id="modalAutoExplain" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="autoExplainTitle">Explicación</h5>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyExplainText()"><i class="bi bi-clipboard"></i> Copiar</button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="autoExplainBody" class="small"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-  // Parser robusto: maneja "", "None", "NaN", y formatos tipo $ 1.234.567,89
-  function parseNum(raw) {
-    if (raw === undefined || raw === null) return 0;
-    let s = String(raw).trim();
-    if (!s || s.toLowerCase() === "none" || s.toLowerCase() === "nan") return 0;
-    s = s.replace(/[^0-9,.\-]/g, '');
-    if (s.includes(",") && s.lastIndexOf(",") > s.lastIndexOf(".")) {
-      s = s.replace(/\./g, "");
-      s = s.replace(",", ".");
+(function() {
+  /* ---------- utilidades base ---------- */
+  function ensureChartJs(cb) {
+    if (window.Chart) { cb(); return; }
+    const s = document.createElement('script');
+    s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+    s.onload = cb;
+    document.head.appendChild(s);
+  }
+  function readJSON(id, fallback=null) {
+    const el = document.getElementById(id);
+    if (!el) return fallback;
+    try { return JSON.parse(el.textContent); } catch(e) { return fallback; }
+  }
+  if (typeof window.fmtARS === 'undefined') {
+    window.fmtARS = function(v){
+      try {
+        return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(v||0);
+      } catch(e) {
+        const n=(v||0).toFixed(2).replace('.',',');
+        return '$ '+n.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+      }
     }
-    const n = Number(s);
-    return Number.isFinite(n) ? n : 0;
+  }
+  function fmtPct(v){ return (v||0).toFixed(1)+'%'; }
+
+  // Copiar PNG
+  window.copyPNG = async function(canvasId) {
+    try {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const blob = await new Promise(res => canvas.toBlob(res));
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = canvasId + '.png'; a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch(e) { console.warn('No se pudo copiar PNG:', e); }
+  };
+
+  /* ---------- helpers Explicar ---------- */
+  const sum  = arr => arr.reduce((a,b)=>a+(+b||0),0);
+  const mean = arr => arr.length ? sum(arr)/arr.length : 0;
+  const stdev = arr => {
+    if(arr.length<2) return 0;
+    const m = mean(arr);
+    const v = arr.reduce((a,x)=>a+Math.pow((+x||0)-m,2),0)/arr.length; // población
+    return Math.sqrt(v);
+  };
+  const maxIdx = arr => arr.length ? arr.map(Number).reduce((mi, v, i, a)=> v>a[mi]? i: mi, 0) : -1;
+  const minIdx = arr => arr.length ? arr.map(Number).reduce((mi, v, i, a)=> v<a[mi]? i: mi, 0) : -1;
+
+  function deltas(arr){ const out=[]; for(let i=1;i<arr.length;i++){ out.push((+arr[i]||0)-(+arr[i-1]||0)); } return out; }
+  function zOutliers(arr, thr){
+    if(arr.length<3) return {idxs:[], z:[]};
+    const m = mean(arr), sd = stdev(arr);
+    if(sd===0) return {idxs:[], z:[]};
+    const zs = arr.map(v => (v-m)/sd);
+    const idxs = []; zs.forEach((z,i)=>{ if(Math.abs(z)>=thr) idxs.push(i); });
+    return {idxs, z:zs, mean:m, stdev:sd};
+  }
+  function streaks(y, tol){
+    let upLen=0, upBest=0, upEnd=0, dnLen=0, dnBest=0, dnEnd=0;
+    for(let i=1;i<y.length;i++){
+      const d = (+y[i]||0) - (+y[i-1]||0);
+      if (d >  tol){ upLen++;  dnLen=0; if (upLen>upBest){ upBest=upLen; upEnd=i; } }
+      else if (d < -tol){ dnLen++; upLen=0; if (dnLen>dnBest){ dnBest=dnLen; dnEnd=i; } }
+      else { upLen=0; dnLen=0; }
+    }
+    return { up:{len:upBest,from:upBest?(upEnd-upBest):null,to:upBest?upEnd:null},
+             dn:{len:dnBest,from:dnBest?(dnEnd-dnBest):null,to:dnBest?dnEnd:null} };
   }
 
-  const fmtMoney = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
-  const fmtInt   = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
-  const fmtPct   = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+  /* ---------- Explicar (auto): rachas, saltos y outliers z-score ---------- */
+  window.autoExplain = function(canvasId, title){
+    const ch = (window.__charts||{})[canvasId];
+    if(!ch){ return; }
+    const labels = ch.data.labels || [];
+    const dsets  = ch.data.datasets || [];
+    let html = '';
+    const rangeTxt = (i1,i2) => (labels[i1]||'–')+' → '+(labels[i2]||'–');
 
-  document.querySelectorAll('.js-money').forEach(el => {
-    const v = parseNum(el.dataset.value);
-    el.textContent = fmtMoney.format(v);
+    if(canvasId==='chartHistDeuda'){
+      const y = (dsets[0]||{}).data||[];
+      const iMax = maxIdx(y), iMin = minIdx(y);
+      const first = +y[0]||0, last = +y[y.length-1]||0;
+      const chgPct = first ? (last-first)/first*100 : 0;
+
+      const tol = Math.max(1, 0.003 * (mean(y)||0));
+      const st  = streaks(y, tol);
+
+      const d = deltas(y);
+      const out = zOutliers(d, 2.0);
+
+      html += `<p>La deuda pasó de <b>${fmtARS(first)}</b> a <b>${fmtARS(last)}</b> (${chgPct>=0?'+':''}${chgPct.toFixed(1)}%).</p>`;
+      if(iMax>=0) html += `<p>Pico: <b>${labels[iMax]}</b> (${fmtARS(+y[iMax]||0)}). Mínimo: <b>${labels[iMin]}</b> (${fmtARS(+y[iMin]||0)}).</p>`;
+      if(st.up.len>0) html += `<p>Racha de <b>subas</b>: ${st.up.len} mes(es) (${rangeTxt(st.up.from, st.up.to)}).</p>`;
+      if(st.dn.len>0) html += `<p>Racha de <b>bajas</b>: ${st.dn.len} mes(es) (${rangeTxt(st.dn.from, st.dn.to)}).</p>`;
+      if(out.idxs.length){
+        html += `<p>Meses <b>atípicos</b> por variación mensual (|z| ≥ 2.0):</p><ul>`;
+        out.idxs.forEach(i=>{
+          const z = out.z[i];
+          const val = d[i];
+          html += `<li>${rangeTxt(i, i+1)} — ${val>=0?'+':''}${fmtARS(Math.abs(val))} (z=${z.toFixed(2)})</li>`;
+        });
+        html += `</ul>`;
+      }
+    }
+    else if(canvasId==='chartHistPct'){
+      const y = (dsets[0]||{}).data||[];
+      const iMax = maxIdx(y), iMin = minIdx(y);
+      const first = +y[0]||0, last = +y[y.length-1]||0;
+      const delta = last-first;
+
+      const d = deltas(y);
+      const out = zOutliers(d, 2.0);
+
+      html += `<p>El % en riesgo pasó de <b>${first.toFixed(1)}%</b> a <b>${last.toFixed(1)}%</b> (${delta>=0?'+':''}${delta.toFixed(1)} pts).</p>`;
+      if(iMax>=0) html += `<p>Máximo: <b>${labels[iMax]}</b> (${(+y[iMax]||0).toFixed(1)}%). Mínimo: <b>${labels[iMin]}</b> (${(+y[iMin]||0).toFixed(1)}%).</p>`;
+      if(out.idxs.length){
+        html += `<p>Meses <b>atípicos</b> por cambio mensual (|z| ≥ 2.0):</p><ul>`;
+        out.idxs.forEach(i=>{
+          const z = out.z[i];
+          const val = d[i];
+          html += `<li>${rangeTxt(i, i+1)} — ${val>=0?'+':''}${Math.abs(val).toFixed(1)} pts (z=${z.toFixed(2)})</li>`;
+        });
+        html += `</ul>`;
+      }
+    }
+    else if(canvasId==='chartHistProdLines' || canvasId==='chartHistAsegLines'){
+      const series = dsets.map(ds=>({lab: ds.label, data: (ds.data||[]).map(Number)}));
+      const lastVals = series.map(s=>({lab:s.lab, v:+(s.data.slice(-1)[0]||0)}))
+                             .sort((a,b)=>b.v-a.v);
+      html += `<p>Top al último período:</p><ul>`;
+      lastVals.slice(0,3).forEach(x=>{ html+=`<li><b>${x.lab}</b>: ${fmtARS(x.v)}</li>`; });
+      html += `</ul>`;
+
+      const outEvents = [];
+      for(const s of series){
+        const d = deltas(s.data);
+        const out = zOutliers(d, 2.0);
+        out.idxs.forEach(i=>{
+          outEvents.push({ lab: s.lab, idx: i, change: d[i], z: out.z[i] });
+        });
+      }
+      outEvents.sort((a,b)=>Math.abs(b.z)-Math.abs(a.z));
+      if(outEvents.length){
+        html += `<p>Variaciones <b>atípicas</b> por serie (|z| ≥ 2.0):</p><ul>`;
+        outEvents.slice(0,6).forEach(e=>{
+          html += `<li><b>${e.lab}</b> — ${rangeTxt(e.idx, e.idx+1)}: ${e.change>=0?'+':''}${fmtARS(Math.abs(e.change))} (z=${e.z.toFixed(2)})</li>`;
+        });
+        html += `</ul>`;
+      }
+    }
+    else if(canvasId==='chartAseg'){
+      const bars = (dsets.find(x=>x.type==='bar')||{}).data||[];
+      const tot = sum(bars);
+      let acum = 0, k=0;
+      while(k<bars.length && (acum/tot)<0.8){ acum += (+bars[k]||0); k++; }
+      html += `<p>Top ${k} aseguradoras concentran <b>${((tot?acum/tot*100:0).toFixed(1))}%</b> de la deuda (<b>${fmtARS(acum)}</b> de <b>${fmtARS(tot)}</b>).</p>`;
+      if(ch.data.labels[0]) html += `<p>Líder: <b>${ch.data.labels[0]}</b> (${fmtARS(+bars[0]||0)}).</p>`;
+    }
+    else if(canvasId==='chartBuckets'){
+      const deuda = (dsets.find(x=>x.yAxisID==='y1')||{}).data||[];
+      const tot = sum(deuda);
+      const parts = ch.data.labels.map((l,i)=>({l,v:+deuda[i]||0,p: tot? ((+deuda[i]||0)/tot*100):0}))
+                                  .sort((a,b)=>b.v-a.v);
+      html += `<p>Deuda total del período: <b>${fmtARS(tot)}</b>. Buckets con mayor peso:</p><ul>`;
+      parts.slice(0,3).forEach(p=>{ html+=`<li><b>${p.l}</b>: ${fmtARS(p.v)} (${p.p.toFixed(1)}%)</li>`;});
+      html += `</ul>`;
+    }
+    else if(canvasId==='chartAsegPie'){
+      const data = (dsets[0]||{}).data||[];
+      const tot = sum(data);
+      const parts = ch.data.labels.map((l,i)=>({l,v:+data[i]||0,p: tot? ((+data[i]||0)/tot*100):0}))
+                                  .sort((a,b)=>b.v-a.v);
+      html += `<p>Total: <b>${fmtARS(tot)}</b>. Top 3 por participación:</p><ul>`;
+      parts.slice(0,3).forEach(p=>{ html+=`<li><b>${p.l}</b>: ${fmtARS(p.v)} (${p.p.toFixed(1)}%)</li>`;});
+      html += `</ul>`;
+    }
+
+    document.getElementById('autoExplainTitle').textContent = title || 'Explicación';
+    document.getElementById('autoExplainBody').innerHTML = html || 'No hay datos para analizar.';
+    new bootstrap.Modal(document.getElementById('modalAutoExplain')).show();
+  };
+
+  window.copyExplainText = function(){
+    const txt = document.getElementById('autoExplainBody').innerText || '';
+    navigator.clipboard?.writeText(txt);
+  };
+
+  /* ---------- Render de charts + modales ---------- */
+  ensureChartJs(function initCharts() {
+    Chart.defaults.font.family = "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    Chart.defaults.elements.line.tension = 0.25;
+    Chart.defaults.color = "#334155";
+    const GRID = "rgba(148,163,184,0.15)";
+    const COLORS_Q = {"Q = 1":"#6ECB63","Q = 2":"#FFD166","Q = 3":"#F4A261","Q = 4–5":"#E76F51","Q ≥ 6":"#E63946"};
+    const alpha = (hex, a="CC") => hex + a;
+
+    const dBuckets    = readJSON('chart-buckets-data');
+    const dAseg       = readJSON('chart-aseg-data');
+    const dProdStack  = readJSON('chart-prodstack-data');
+    const dAsegPie    = readJSON('chart-aseg-pie-data');
+    const dHist       = readJSON('chart-hist-data');
+    const dHistLines  = readJSON('chart-hist-prodlines-data');
+    const dAsegLines  = readJSON('chart-hist-aseglines-data');
+
+    function stackedPct(ctx){
+      const {chart, datasetIndex, dataIndex} = ctx;
+      const val = Number(chart.data.datasets[datasetIndex].data[dataIndex] || 0);
+      let colTotal = 0;
+      chart.data.datasets.forEach(ds => { colTotal += Number(ds.data[dataIndex] || 0); });
+      const pct = colTotal ? (val/colTotal*100) : 0;
+      return {val, pct};
+    }
+    function datasetPct(ctx){
+      const {chart, datasetIndex, dataIndex} = ctx;
+      const ds = chart.data.datasets[datasetIndex];
+      const val = Number(ds.data[dataIndex] || 0);
+      const total = ds.data.reduce((a,b)=>a+Number(b||0),0);
+      const pct = total ? (val/total*100) : 0;
+      return {val, pct};
+    }
+
+    window.__charts = {};
+
+    /* ---- Período ---- */
+    if (dBuckets && document.getElementById('chartBuckets')) {
+      window.__charts['chartBuckets'] = new Chart(document.getElementById('chartBuckets').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: dBuckets.labels,
+          datasets: [
+            { label: 'Deuda (ARS)', data: dBuckets.deuda, type: 'bar', yAxisID: 'y1' },
+            { label: 'Contratos',   data: dBuckets.contratos, type: 'line', yAxisID: 'y2' },
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { grid: { color: GRID } },
+            y1: { position: 'left',  beginAtZero: true, ticks: { callback: v => fmtARS(v) }, grid: { color: GRID } },
+            y2: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false, color: GRID } }
+          },
+          plugins: {
+            legend: { display: true, position: 'top', align: 'end' },
+            tooltip: { callbacks: {
+              label: function(ctx){
+                const yid = ctx.dataset.yAxisID;
+                if (yid === 'y1'){ const {val,pct} = datasetPct(ctx); return `${ctx.dataset.label}: ${fmtARS(val)} (${pct.toFixed(1)}%)`; }
+                if (yid === 'y2'){ const {val,pct} = datasetPct(ctx); return `${ctx.dataset.label}: ${val} (${pct.toFixed(1)}%)`; }
+              }
+            }}
+          }
+        }
+      });
+    }
+
+    if (dAseg && document.getElementById('chartAseg')) {
+      const totalPareto = dAseg.deuda.reduce((a,b)=>a+Number(b||0),0);
+      window.__charts['chartAseg'] = new Chart(document.getElementById('chartAseg').getContext('2d'), {
+        data: { labels: dAseg.labels,
+          datasets: [
+            { type: 'bar',  label: 'Deuda (ARS)', data: dAseg.deuda, yAxisID: 'y1' },
+            { type: 'line', label: 'Acumulado %', data: dAseg.pareto, yAxisID: 'y2' },
+          ]},
+        options: {
+          responsive: true,
+          scales: {
+            x: { grid: { color: GRID } },
+            y1: { position: 'left',  beginAtZero: true, ticks: { callback: v => fmtARS(v) }, grid: { color: GRID } },
+            y2: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false, color: GRID }, ticks: { callback: v => v + '%' } }
+          },
+          plugins: {
+            legend: { display: true, position: 'top', align: 'end' },
+            tooltip: { callbacks: {
+              label: function(ctx){
+                if (ctx.dataset.type==='bar') {
+                  const val = Number(ctx.raw||0);
+                  const pct = totalPareto ? (val/totalPareto*100) : 0;
+                  return `Deuda: ${fmtARS(val)} (${pct.toFixed(1)}%)`;
+                } else {
+                  return `Acumulado: ${ctx.formattedValue}%`;
+                }
+              }
+            }}
+          }
+        }
+      });
+    }
+
+    if (dProdStack && document.getElementById('chartProdStack')) {
+      const dsColored = dProdStack.datasets.map(s => ({
+        ...s,
+        backgroundColor: alpha(COLORS_Q[s.label] || '#999999'),
+        borderColor: COLORS_Q[s.label] || '#999999',
+        borderWidth: 1
+      }));
+      window.__charts['chartProdStack'] = new Chart(document.getElementById('chartProdStack').getContext('2d'), {
+        type: 'bar',
+        data: { labels: dProdStack.labels, datasets: dsColored },
+        options: {
+          responsive: true,
+          scales: {
+            x: { stacked: true, grid: { color: GRID } },
+            y: { stacked: true, beginAtZero: true, ticks: { callback: (v) => fmtARS(v) }, grid: { color: GRID } }
+          },
+          plugins: {
+            legend: { display: true, position: 'top', align: 'end' },
+            tooltip: { callbacks: {
+              label: function(ctx){ const {val,pct} = stackedPct(ctx); return `${ctx.dataset.label} — ${ctx.label}: ${fmtARS(val)} (${pct.toFixed(1)}%)`; }
+            }}
+          }
+        }
+      });
+    }
+
+    if (dAsegPie && document.getElementById('chartAsegPie')) {
+      window.__charts['chartAsegPie'] = new Chart(document.getElementById('chartAsegPie').getContext('2d'), {
+        type: 'pie',
+        data: { labels: dAsegPie.labels, datasets: [{ data: dAsegPie.deuda }] },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true, position: 'bottom' },
+            tooltip: { callbacks: {
+              label: function(ctx){
+                const ds = ctx.dataset;
+                const val = Number(ds.data[ctx.dataIndex] || 0);
+                const total = ds.data.reduce((a,b)=>a+Number(b||0), 0);
+                const pct = total ? ((val/total)*100).toFixed(1) : '0.0';
+                return `${ctx.label}: ${fmtARS(val)} (${pct}%)`;
+              }
+            }}
+          }
+        }
+      });
+    }
+
+    /* ---- Histórico ---- */
+    if (dHist && document.getElementById('chartHistDeuda')) {
+      window.__charts['chartHistDeuda'] = new Chart(document.getElementById('chartHistDeuda').getContext('2d'), {
+        type: 'line',
+        data: { labels: dHist.labels, datasets: [{ label: 'Deuda total', data: dHist.deuda }] },
+        options: {
+          responsive: true,
+          scales: { x:{grid:{color:GRID}}, y: { beginAtZero: true, ticks: { callback: v => fmtARS(v) }, grid: { color: GRID } } },
+          plugins: { legend: { display: true, position: 'top', align: 'end' } }
+        }
+      });
+    }
+
+    if (dHist && document.getElementById('chartHistPct')) {
+      window.__charts['chartHistPct'] = new Chart(document.getElementById('chartHistPct').getContext('2d'), {
+        type: 'line',
+        data: { labels: dHist.labels, datasets: [{ label: '% en riesgo', data: dHist.pct_riesgo, borderColor: '#475569' }] },
+        options: {
+          responsive: true,
+          scales: { x:{grid:{color:GRID}}, y: { min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { color: GRID } } },
+          plugins: { legend: { display: true, position: 'top', align: 'end' } }
+        }
+      });
+    }
+
+    if (dHistLines && document.getElementById('chartHistProdLines')) {
+      window.__charts['chartHistProdLines'] = new Chart(document.getElementById('chartHistProdLines').getContext('2d'), {
+        type: 'line',
+        data: { labels: dHistLines.labels, datasets: dHistLines.datasets },
+        options: {
+          responsive: true,
+          scales: { x:{grid:{color:GRID}}, y: { beginAtZero: true, ticks: { callback: v => fmtARS(v) }, grid: { color: GRID } } },
+          plugins: { legend: { display: true, position: 'top', align: 'end' } }
+        }
+      });
+    }
+
+    if (dAsegLines && document.getElementById('chartHistAsegLines')) {
+      window.__charts['chartHistAsegLines'] = new Chart(document.getElementById('chartHistAsegLines').getContext('2d'), {
+        type: 'line',
+        data: { labels: dAsegLines.labels, datasets: dAsegLines.datasets },
+        options: {
+          responsive: true,
+          scales: { x:{grid:{color:GRID}}, y: { beginAtZero: true, ticks: { callback: v => fmtARS(v) }, grid: { color: GRID } } },
+          plugins: { legend: { display: true, position: 'top', align: 'end' } }
+        }
+      });
+    }
+
+    /* ---- Modales: clonar gráficos en grande ---- */
+    let chartBucketsFull=null, chartAsegFull=null, chartProdStackFull=null, chartAsegPieFull=null,
+        chartHistDeudaFull=null, chartHistPctFull=null, chartHistProdLinesFull=null, chartHistAsegLinesFull=null;
+
+    const mk = (id, cfg) => {
+      const el = document.getElementById(id);
+      if(!el) return null;
+      return new Chart(el.getContext('2d'), cfg);
+    };
+
+    const modalBuckets = document.getElementById('modalBuckets');
+    if (modalBuckets) {
+      modalBuckets.addEventListener('shown.bs.modal', function () {
+        if (chartBucketsFull) chartBucketsFull.destroy();
+        chartBucketsFull = mk('chartBucketsFull', {
+          type:'bar',
+          data:{ labels:dBuckets.labels, datasets:[
+            { label:'Deuda (ARS)', data:dBuckets.deuda, type:'bar', yAxisID:'y1' },
+            { label:'Contratos', data:dBuckets.contratos, type:'line', yAxisID:'y2' }
+          ]},
+          options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{grid:{color:GRID}}, y1:{position:'left', ticks:{callback:v=>fmtARS(v)}, grid:{color:GRID}},
+                     y2:{position:'right', grid:{drawOnChartArea:false,color:GRID}} },
+            plugins:{ legend:{display:true, position:'top', align:'end'} }
+          }
+        });
+      });
+      modalBuckets.addEventListener('hidden.bs.modal', ()=>{ if(chartBucketsFull){chartBucketsFull.destroy(); chartBucketsFull=null;} });
+    }
+
+const modalAseg = document.getElementById('modalAseg');
+if (modalAseg) {
+  modalAseg.addEventListener('shown.bs.modal', function () {
+    if (chartAsegFull) chartAsegFull.destroy();
+    chartAsegFull = mk('chartAsegFull', {
+      data:{ labels:dAseg.labels, datasets:[
+        { type:'bar',  label:'Deuda (ARS)', data:dAseg.deuda,  yAxisID:'y1' },
+        { type:'line', label:'Acumulado %', data:dAseg.pareto, yAxisID:'y2' }
+      ]},
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        scales:{
+          x:{ grid:{ color:GRID } },
+          y1:{ position:'left', ticks:{ callback:v=>fmtARS(v) }, grid:{ color:GRID } },
+          y2:{ position:'right', min:0, max:100, grid:{ drawOnChartArea:false, color:GRID }, ticks:{ callback:v=>v+'%' } }
+        }, // <-- acá faltaba este cierre de "scales"
+        plugins:{ legend:{ display:true, position:'top', align:'end' } }
+      }
+    });
   });
-  document.querySelectorAll('.js-int').forEach(el => {
-    const v = parseNum(el.dataset.value);
-    el.textContent = fmtInt.format(v);
+  modalAseg.addEventListener('hidden.bs.modal', ()=>{ if(chartAsegFull){ chartAsegFull.destroy(); chartAsegFull=null; } });
+}
+
+
+    const modalProd = document.getElementById('modalProdStack');
+    if (modalProd) {
+      modalProd.addEventListener('shown.bs.modal', function () {
+        if (chartProdStackFull) chartProdStackFull.destroy();
+        const dsColored = dProdStack.datasets.map(s=>({
+          ...s, backgroundColor: alpha(COLORS_Q[s.label]||'#999999'),
+          borderColor: COLORS_Q[s.label]||'#999999', borderWidth:1
+        }));
+        chartProdStackFull = mk('chartProdStackFull', {
+          type:'bar',
+          data:{ labels:dProdStack.labels, datasets:dsColored },
+          options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{stacked:true, grid:{color:GRID}}, y:{stacked:true, ticks:{callback:v=>fmtARS(v)}, grid:{color:GRID}} },
+            plugins:{ legend:{display:true, position:'top', align:'end'} }
+          }
+        });
+      });
+      modalProd.addEventListener('hidden.bs.modal', ()=>{ if(chartProdStackFull){chartProdStackFull.destroy(); chartProdStackFull=null;} });
+    }
+
+    const modalAsegPie = document.getElementById('modalAsegPie');
+    if (modalAsegPie) {
+      modalAsegPie.addEventListener('shown.bs.modal', function () {
+        if (chartAsegPieFull) chartAsegPieFull.destroy();
+        chartAsegPieFull = mk('chartAsegPieFull', {
+          type:'pie',
+          data:{ labels:dAsegPie.labels, datasets:[{data:dAsegPie.deuda}] },
+          options:{ responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{display:true, position:'right'} }
+          }
+        });
+      });
+      modalAsegPie.addEventListener('hidden.bs.modal', ()=>{ if(chartAsegPieFull){chartAsegPieFull.destroy(); chartAsegPieFull=null;} });
+    }
+
+    const modalHistDeuda = document.getElementById('modalHistDeuda');
+    if (modalHistDeuda) {
+      modalHistDeuda.addEventListener('shown.bs.modal', function () {
+        if (chartHistDeudaFull) chartHistDeudaFull.destroy();
+        chartHistDeudaFull = mk('chartHistDeudaFull', {
+          type:'line',
+          data:{ labels:dHist.labels, datasets:[{label:'Deuda total', data:dHist.deuda}] },
+          options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{grid:{color:GRID}}, y:{ticks:{callback:v=>fmtARS(v)}, grid:{color:GRID}} },
+            plugins:{ legend:{display:true, position:'top', align:'end'} }
+          }
+        });
+      });
+      modalHistDeuda.addEventListener('hidden.bs.modal', ()=>{ if(chartHistDeudaFull){chartHistDeudaFull.destroy(); chartHistDeudaFull=null;} });
+    }
+
+    const modalHistPct = document.getElementById('modalHistPct');
+    if (modalHistPct) {
+      modalHistPct.addEventListener('shown.bs.modal', function () {
+        if (chartHistPctFull) chartHistPctFull.destroy();
+        chartHistPctFull = mk('chartHistPctFull', {
+          type:'line',
+          data:{ labels:dHist.labels, datasets:[{label:'% en riesgo', data:dHist.pct_riesgo, borderColor:'#475569'}] },
+          options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{grid:{color:GRID}}, y:{min:0,max:100,ticks:{callback:v=>v+'%'}} },
+            plugins:{ legend:{display:true, position:'top', align:'end'} }
+          }
+        });
+      });
+      modalHistPct.addEventListener('hidden.bs.modal', ()=>{ if(chartHistPctFull){chartHistPctFull.destroy(); chartHistPctFull=null;} });
+    }
+
+    const modalHistProd = document.getElementById('modalHistProdLines');
+    if (modalHistProd) {
+      modalHistProd.addEventListener('shown.bs.modal', function () {
+        if (chartHistProdLinesFull) chartHistProdLinesFull.destroy();
+        chartHistProdLinesFull = mk('chartHistProdLinesFull', {
+          type:'line',
+          data:{ labels:dHistLines.labels, datasets:dHistLines.datasets },
+          options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{grid:{color:GRID}}, y:{ticks:{callback:v=>fmtARS(v)}, grid:{color:GRID}} },
+            plugins:{ legend:{display:true, position:'top', align:'end'} }
+          }
+        });
+      });
+      modalHistProd.addEventListener('hidden.bs.modal', ()=>{ if(chartHistProdLinesFull){chartHistProdLinesFull.destroy(); chartHistProdLinesFull=null;} });
+    }
+
+    const modalHistAseg = document.getElementById('modalHistAsegLines');
+    if (modalHistAseg) {
+      modalHistAseg.addEventListener('shown.bs.modal', function () {
+        if (chartHistAsegLinesFull) chartHistAsegLinesFull.destroy();
+        chartHistAsegLinesFull = mk('chartHistAsegLinesFull', {
+          type:'line',
+          data:{ labels:dAsegLines.labels, datasets:dAsegLines.datasets },
+          options:{ responsive:true, maintainAspectRatio:false,
+            scales:{ x:{grid:{color:GRID}}, y:{ticks:{callback:v=>fmtARS(v)}, grid:{color:GRID}} },
+            plugins:{ legend:{display:true, position:'top', align:'end'} }
+          }
+        });
+      });
+      modalHistAseg.addEventListener('hidden.bs.modal', ()=>{ if(chartHistAsegLinesFull){chartHistAsegLinesFull.destroy(); chartHistAsegLinesFull=null;} });
+    }
+
+    // Popovers de Info
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el=>{
+      new bootstrap.Popover(el, {trigger:'focus', html:true, container:'body'});
+    });
   });
-  document.querySelectorAll('.js-pct').forEach(el => {
-    const v = parseNum(el.dataset.value);
-    el.textContent = fmtPct.format(v);
-  });
-  document.querySelectorAll('.js-float1').forEach(el => {
-    const v = parseNum(el.dataset.value);
-    el.textContent = v.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  });
+})(); /* cierre IIFE */
 </script>
-
-{% if kpi %}
-<script>
-  // ====== Datos Período ======
-  const dBuckets = JSON.parse(document.getElementById('chart-buckets-data').textContent);
-  const dAseg    = JSON.parse(document.getElementById('chart-aseg-data').textContent);
-  const fmtARS   = v => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(v);
-
-  // Buckets Q (barras + línea)
-  new Chart(document.getElementById('chartBuckets').getContext('2d'), {
-    data: {
-      labels: dBuckets.labels,
-      datasets: [
-        { type: 'bar',  label: 'Deuda (ARS)', data: dBuckets.monto, yAxisID: 'y' },
-        { type: 'line', label: 'Contratos',   data: dBuckets.contratos, yAxisID: 'y1', tension: 0.2 }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y:  { beginAtZero: true, ticks: { callback: fmtARS } },
-        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
-      },
-      plugins: { legend: { display: true } }
-    }
-  });
-
-  // Pareto por aseguradora (barras + línea %)
-  new Chart(document.getElementById('chartAseg').getContext('2d'), {
-    data: {
-      labels: dAseg.labels,
-      datasets: [
-        { type: 'bar',  label: 'Deuda (ARS)',   data: dAseg.montos,   yAxisID: 'y' },
-        { type: 'line', label: '% acumulado',   data: dAseg.acum_pct, yAxisID: 'y1', tension: 0.2 }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y:  { beginAtZero: true, ticks: { callback: fmtARS } },
-        y1: { min: 0, max: 100, position: 'right', grid: { drawOnChartArea: false },
-              ticks: { callback: v => v + '%' } }
-      },
-      plugins: { legend: { display: true } }
-    }
-  });
-
-  // ====== Datos Histórico ======
-  const dHist = JSON.parse(document.getElementById('chart-hist-data').textContent);
-
-  // Evolución de deuda y monto en riesgo (líneas)
-  new Chart(document.getElementById('chartHistDeuda').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: dHist.labels,
-      datasets: [
-        { label: 'Deuda (Q ≥ 1)', data: dHist.deuda, tension: 0.2 },
-        { label: 'Monto en riesgo (Q ≥ 2)', data: dHist.monto_riesgo, tension: 0.2 }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true, ticks: { callback: fmtARS } } },
-      plugins: { legend: { display: true } }
-    }
-  });
-
-  // % en riesgo (línea 0–100%)
-  new Chart(document.getElementById('chartHistPct').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: dHist.labels,
-      datasets: [ { label: '% en riesgo', data: dHist.pct_riesgo, tension: 0.2 } ]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { min:0, max:100, ticks:{ callback: v => v + '%' } } },
-      plugins: { legend: { display: true } }
-    }
-  });
-</script>
-{% endif %}
 {% endblock %}
