@@ -28,3 +28,25 @@ Thumbs.db
 
 sync_accounts_min.py
 
+# Entornos y cachés
+.env
+.env.*
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Editores/IDE
+.vscode/
+.idea/
+
+# SO
+.DS_Store
+
+# Credenciales locales
+.gmail_credentials/
+.cloudflared/
+
+# Varios
+*.bak
+*.orig
