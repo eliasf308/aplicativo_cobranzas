@@ -11,3 +11,7 @@
 tokens/
 creds/
 __pycache__/
+
+# Runtime state
+_state/
+
