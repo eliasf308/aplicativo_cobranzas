@@ -1,0 +1,13 @@
+﻿# Ignorar secretos/tokens en sync
+*.json
+*.ini
+*.log
+*.pickle
+*.pkl
+*.zip
+*.bak
+.env
+.env.*
+tokens/
+creds/
+__pycache__/
