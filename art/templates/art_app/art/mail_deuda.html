@@ -1,0 +1,122 @@
+{% load humanize fmt %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>DEUDA ART - PROMECOR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:24px;background:#f9f9f9;font-family:Montserrat,Arial,sans-serif;line-height:1.5;color:#333;">
+  <div style="max-width:900px;margin:0 auto;background:#fff;border:2px solid #002f6c;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.08);">
+    <!-- Encabezado con logo -->
+    <div style="padding:24px 24px 0;text-align:center;">
+      <img src="cid:promecor-logo" alt="Promecor" style="width:180px;max-width:60%;height:auto" />
+    </div>
+
+    <div style="padding:8px 24px 0;">
+      <h2 style="margin:8px 0 4px;font-weight:700;color:#002f6c;">DEUDA ART – PROMECOR</h2>
+      <p style="margin:0;color:#002f6c;">Periodo: <strong>{% if periodo %}{{ periodo|date:"m/Y" }}{% else %}—{% endif %}</strong></p>
+    </div>
+
+    <!-- Cuerpo según regla -->
+    <div style="padding:16px 24px 0;">
+      <!-- Saludo: genérico si hay >=3 contratos (razon_saludo=None), personalizado si hay 1–2 -->
+      <p style="margin:0 0 8px;">Estimado/a{% if razon_saludo %} <strong>{{ razon_saludo }}</strong>{% endif %},</p>
+
+      {% if body_variant == "menor3" %}
+        <p style="margin:0 0 12px;">
+          Nos ponemos en contacto desde Promecor, su Broker de Seguros, con el objetivo de informarle que a la fecha
+          tiene un saldo pendiente con su actual ART.
+        </p>
+        <p style="margin:0 0 12px;">
+          Consideramos oportuno dar aviso de la situación para que, en la medida de lo posible, podamos accionar en
+          consecuencia y verificar si esto corresponde a conceptos no remunerativos o si hace falta gestionar un pago
+          cancelatorio.
+        </p>
+        <p style="margin:0 0 12px;">
+          Al <strong>{% if periodo %}{{ periodo|date:"m/Y" }}{% else %}—{% endif %}</strong>, el saldo pendiente es el que se detalla a continuación.
+        </p>
+      {% else %}
+        <p style="margin:0 0 12px;">
+          Nos ponemos en contacto desde Promecor, su Broker de Seguros, para informarle que a la fecha tiene un saldo
+          pendiente con su actual ART, por lo cual el contrato se encuentra <strong>intimado en proceso de anulación</strong>.
+        </p>
+        <p style="margin:0 0 12px;">
+          De acuerdo con lo establecido en la legislación vigente (artículo 27 de la ley 24.557), se determina el inicio
+          del proceso de intimación y anulación de la cobertura por falta de pago a partir de la segunda cuota adeudada.
+        </p>
+        <p style="margin:0 0 12px;">
+          Como asesores debemos notificar la situación del contrato y las consecuencias que trae la falta de pago de las cuotas.
+          El saldo adeudado informado por la Compañía a la fecha es el siguiente:
+        </p>
+      {% endif %}
+    </div>
+
+    <!-- TABLA inmediatamente después del párrafo anterior -->
+    <div style="padding:0 24px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th align="left" style="padding:12px 10px;border-bottom:2px solid #e6eef5;color:#002f6c;font-weight:600;">Razón social</th>
+            <th align="left" style="padding:12px 10px;border-bottom:2px solid #e6eef5;color:#002f6c;font-weight:600;">CUIT</th>
+            <th align="left" style="padding:12px 10px;border-bottom:2px solid #e6eef5;color:#002f6c;font-weight:600;">Contrato</th>
+            <th align="left" style="padding:12px 10px;border-bottom:2px solid #e6eef5;color:#002f6c;font-weight:600;">Aseguradora</th>
+            <th align="right" style="padding:12px 10px;border-bottom:2px solid #e6eef5;color:#002f6c;font-weight:600;">Deuda total</th>
+            <th align="center" style="padding:12px 10px;border-bottom:2px solid #e6eef5;color:#002f6c;font-weight:600;">Períodos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in filas %}
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #f0f4f8;">
+              {{ f.razon_social }}
+              {% if f.intimado %}
+                <span style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#ffebee;color:#b00020;font-size:12px;font-weight:600;">INTIMADO</span>
+              {% endif %}
+            </td>
+            <td style="padding:10px;border-bottom:1px solid #f0f4f8;">{{ f.cuit }}</td>
+            <td style="padding:10px;border-bottom:1px solid #f0f4f8;">{{ f.contrato }}</td>
+            <td style="padding:10px;border-bottom:1px solid #f0f4f8;">{{ f.aseguradora }}</td>
+            <td align="right" style="padding:10px;border-bottom:1px solid #f0f4f8;">{{ f.deuda_total|ars }}</td>
+            <td align="center" style="padding:10px;border-bottom:1px solid #f0f4f8;">{{ f.q_periodos }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" style="padding:12px;color:#666;">No hay filas para mostrar.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- VEP + texto adicional (después de la tabla) -->
+    <div style="padding:16px 24px 0;">
+      <p style="margin:0 0 12px;">
+        Si corresponde, deberá abonar el importe generando un VEP de pago a través de la página de AFIP y transferirlo
+        por su entidad bancaria. Una vez realizada esta gestión, o si ya está abonada la deuda, le solicitamos que nos
+        haga llegar el VEP y su correspondiente comprobante de pago para actualizar el saldo.
+      </p>
+
+      <div style="border:1px solid #e6eef5;background:#f8fbff;border-radius:8px;padding:10px 14px;margin:12px 0;">
+        <div style="font-weight:600;color:#002f6c;margin-bottom:6px;">Información para generar el VEP</div>
+        <div style="font-size:14px;">
+          VEP para el pago de la deuda Capital: <em>Impuesto 312 – Concepto 19 – Subconcepto 19 – Período Fiscal (mes anterior al actual / año actual)</em><br/>
+          VEP para el pago de intereses: <em>Impuesto 312 – Concepto 19 – Subconcepto 51 – Período Fiscal (mes anterior al actual / año actual)</em>
+        </div>
+      </div>
+
+      <p style="margin:0 0 12px;">
+        En caso de requerir un estado de cuenta, por favor solicítenos el mismo. Quedamos a disposición por cualquier requerimiento.
+      </p>
+    </div>
+
+    <!-- Cierre -->
+    <div style="padding:0 24px 24px;">
+      <p style="margin:12px 0 6px;">
+        Si ya realizó el pago, por favor desestime este aviso. Ante cualquier consulta, responda a este correo.
+      </p>
+      <p style="margin:0;color:#002f6c;font-weight:600;">Cobranzas Promecor</p>
+    </div>
+  </div>
+</body>
+</html>

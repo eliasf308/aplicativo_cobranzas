@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalle Plan de Pagos - Póliza {{ plan.poliza.numero }} Endoso {{ plan.endoso }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 30px;
+            color: #333;
+        }
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #dcdcdc;
+            padding: 12px;
+        }
+        .card-header h4, .card-header h5 {
+            margin: 0;
+            color: #333;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        th {
+            background-color: #003366;
+            color: #fff;
+            text-align: center;
+        }
+        tfoot {
+            background-color: #f2f2f2;
+        }
+        .text-end {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        .bg-success { background-color: #198754; color: white; }
+        .bg-warning { background-color: #ffc107; color: black; }
+        .bg-danger { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Detalle del Plan -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Detalle del Plan de Pago</h4>
+        </div>
+        <div class="card-body">
+            <p><strong>Aseguradora:</strong> {{ plan.aseguradora }}</p>
+            <p><strong>Ramo:</strong> {{ plan.ramo }}</p>
+            <p><strong>Póliza:</strong> {{ plan.poliza.numero }}</p>
+            <p><strong>Endoso:</strong> {{ plan.endoso }}</p>
+            <p><strong>ID operación:</strong> {{ plan.aseguradora }}-{{ plan.ramo }}-{{ plan.poliza.numero }}-{{ plan.endoso }}</p>
+        </div>
+    </div>
+
+    <!-- Resumen de Cuotas -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Resumen de Cuotas</h5>
+        </div>
+        <div class="card-body">
+            <div class="text-center">
+                <p><strong>Cuotas Pagadas:</strong> {{ pagadas }}</p>
+                <p><strong>Cuotas Parciales:</strong> {{ parciales }}</p>
+                <p><strong>Cuotas Impagas:</strong> {{ impagas }}</p>
+                <p><strong>Saldo pendiente:</strong> ${{ saldo_pendiente|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cuotas Asociadas -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Cuotas asociadas</h5>
+        </div>
+        <div class="card-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cuota</th>
+                        <th>Vencimiento</th>
+                        <th>Premio</th>
+                        <th>Saldo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cuota in cuotas %}
+                    <tr>
+                        <td class="text-center">{{ cuota.numero }}</td>
+                        <td class="text-center">{{ cuota.vencimiento|date:"d/m/Y" }}</td>
+                        <td class="text-end">${{ cuota.importe_original|floatformat:2 }}</td>
+                        <td class="text-end">${{ cuota.importe|floatformat:2 }}</td>
+                        <td class="text-center">
+                            {% with saldo=cuota.importe importe_original=cuota.importe_original %}
+                                {% if saldo == 0 %}
+                                    <span class="badge bg-success">Pagada</span>
+                                {% elif saldo < importe_original %}
+                                    <span class="badge bg-warning">Parcial</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Impaga</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2" class="text-end">Total:</th>
+                        <th class="text-end">${{ total_premio|floatformat:2 }}</th>
+                        <th class="text-end">${{ total_saldo|floatformat:2 }}</th>
+                        <th>—</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

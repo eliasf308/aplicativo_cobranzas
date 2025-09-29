@@ -1,0 +1,16 @@
+# requirements-dev.txt (opcional) — herramientas para desarrollo
+# Instalá solo si te sirven. No son necesarias para producción.
+
+# Monitoreo de Celery (UI)
+flower==2.0.1
+
+# Consola interactiva mejorada
+ipython==8.28.0
+
+# Formateo y utilidades
+black==24.8.0
+isort==5.13.2
+
+# Tests
+pytest==8.3.3
+pytest-django==4.9.0

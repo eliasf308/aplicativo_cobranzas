@@ -1,0 +1,19 @@
+* text=auto
+*.py text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binarios (no tocar EOL)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf  binary
+*.xlsx binary
+*.xls  binary
+*.pptx binary
+*.zip  binary

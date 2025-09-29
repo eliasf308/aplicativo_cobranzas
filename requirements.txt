@@ -1,0 +1,16 @@
+Django==5.2
+celery==5.4.0
+pandas==2.2.3
+openpyxl==3.1.5
+XlsxWriter==3.2.5
+requests
+psycopg2-binary==2.9.10
+weasyprint==65.1
+pdfplumber
+python-dotenv
+google-api-python-client
+lxml==5.4.0
+redis==5.0.4
+gunicorn==22.0.0
+whitenoise==6.7.0
+

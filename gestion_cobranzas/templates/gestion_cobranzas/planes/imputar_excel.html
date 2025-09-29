@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm" style="max-width: 600px; margin: auto;">
+        <div class="card-body">
+            <h3 class="mb-4">Cargar Imputación</h3>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label"><strong>Seleccionar xslx</strong></label>
+                    {{ form.archivo }}
+                </div>
+                <button type="submit" class="btn btn-primary">Cargar</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

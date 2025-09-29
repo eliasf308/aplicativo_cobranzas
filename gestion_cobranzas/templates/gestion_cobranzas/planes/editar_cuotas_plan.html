@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Editar Cuotas del Plan</h2>
+
+    <div class="mb-3">
+        <strong>Aseguradora:</strong> {{ plan.aseguradora.nombre }}<br>
+        <strong>Ramo:</strong> {{ plan.ramo.nombre }}<br>
+        <strong>Póliza:</strong> {{ plan.poliza.numero }}<br>
+        <strong>Endoso:</strong> {{ plan.endoso }}
+    </div>
+
+    <form method="post" class="card p-4 shadow-sm">
+        {% csrf_token %}
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>N° Cuota</th>
+                    <th>Vencimiento</th>
+                    <th>Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in formset %}
+                    <tr>
+                        <td>{{ form.numero }}</td>
+                        <td>{{ form.vencimiento }}</td>
+                        <td>{{ form.importe }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        <a href="{% url 'listar_planes' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

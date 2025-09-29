@@ -1,0 +1,62 @@
+{% load humanize %}
+
+<div class="card" style="border:1px solid #e3e9f2;border-radius:10px;margin-top:16px;">
+  <div style="padding:12px 14px;border-bottom:1px solid #e3e9f2;background:#f8fafc;">
+    <strong>Envíos de mail (últimos 100)</strong>
+  </div>
+
+  {% if email_logs %}
+  <div style="overflow:auto;">
+    <table class="table table-sm" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#fbfdff;">
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #eef3f8;">Creado</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #eef3f8;">Asunto</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #eef3f8;">Aseguradora</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #eef3f8;">Contrato</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #eef3f8;">Destinatarios</th>
+          <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #eef3f8;">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in email_logs %}
+        <tr>
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f6fb;">
+            {{ log.creado_en|date:"d/m/Y H:i" }}
+          </td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f6fb;">
+            {{ log.asunto }}
+          </td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f6fb;">
+            {{ log.aseguradora }}
+          </td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f6fb;">
+            {{ log.contrato }}
+          </td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f6fb;">
+            {% if log.destinatarios %}
+              {% for d in log.destinatarios %}
+                <span style="display:inline-block;margin-right:6px;">{{ d }}</span>
+              {% endfor %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f3f6fb;">
+            {% if log.estado == "enviado" %}
+              <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#e7f8ef;color:#147d3f;font-weight:600;">Enviado</span>
+            {% elif log.estado == "fallido" %}
+              <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#ffebee;color:#b00020;font-weight:600;">Fallido</span>
+            {% else %}
+              <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#f1f5fb;color:#334155;font-weight:600;">{{ log.estado|capfirst }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:12px 14px;color:#64748b;">Sin envíos registrados para este CUIT.</div>
+  {% endif %}
+</div>

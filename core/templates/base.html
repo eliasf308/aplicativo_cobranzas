@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Promecor - Cobranzas</title>
+
+  <!-- CSS propio (opcional) -->
+  <link rel="stylesheet" href="{% static 'core/base.css' %}">
+  <!-- Bootstrap / Icons / DataTables -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+
+  <style>
+    body { background-color: #f8f9fa; }
+
+    /* Sidebar sticky */
+    .sidebar { background-color: #003366; color: white; }
+    .sidebar a, .sidebar button {
+      color: white; text-decoration: none; padding: 10px;
+      display: block; width: 100%; border: 0; background: none; text-align: left;
+    }
+    .sidebar a:hover, .sidebar button:hover { background-color:#004080; }
+    .sidebar .sticky-bottom { position: sticky; bottom: 1rem; }
+
+    .topbar { background-color:#ffffff; border-bottom:1px solid #dee2e6; }
+    .main-content { padding:20px; }
+  </style>
+</head>
+
+<body>
+<div class="container-fluid">
+  <div class="row min-vh-100">
+
+    <!-- ************** SIDEBAR ************** -->
+    <nav class="col-md-2 d-none d-md-block sidebar">
+      <div class="position-sticky top-0 d-flex flex-column" style="height:100vh; overflow:auto;">
+        <h4 class="p-3">Promecor</h4>
+
+        <!-- Seguros Generales -->
+        <button class="btn text-start text-white collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#submenuSeguros"
+                aria-expanded="false"
+                aria-controls="submenuSeguros">
+          <i class="bi bi-folder2-open"></i> Seguros Generales
+        </button>
+        <div class="collapse ms-3 mt-1" id="submenuSeguros">
+          <a href="/planes/carga-excel/"><i class="bi bi-upload"></i> Carga de Planes</a>
+          <a href="/planes/listado/"><i class="bi bi-list"></i> Planes de pago</a>
+          <a href="/planes/imputar-excel/"><i class="bi bi-cash-coin"></i> Imputar Pagos</a>
+          <a href="{% url 'reportes' %}"><i class="bi bi-bar-chart-line"></i> Reportes</a>
+        </div>
+
+        <!-- ART -->
+        <button class="btn text-start text-white collapsed mt-2"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#submenuArt"
+                aria-expanded="false"
+                aria-controls="submenuArt">
+          <i class="bi bi-shield-check"></i> ART
+        </button>
+        <div class="collapse ms-3 mt-1" id="submenuArt">
+          <a href="{% url 'art:art_generar_archivo' %}"><i class="bi bi-file-earmark-plus"></i> Generar archivo</a>
+          <a href="{% url 'art:art_enviar_mails' %}"><i class="bi bi-envelope-paper"></i> Enviar mails</a>
+          <a href="{% url 'art:consulta_busqueda' %}"><i class="bi bi-search"></i> Consulta</a>
+          <a href="{% url 'art:art_analisis' %}"><i class="bi bi-graph-up"></i> Análisis</a>
+        </div>
+
+        <!-- (Opcional) Acciones fijas abajo
+        <div class="sticky-bottom mt-auto px-3 pb-3">
+          <a class="btn btn-light w-100 mb-2" href="#"><i class="bi bi-download"></i> Exportar</a>
+          <a class="btn btn-outline-light w-100" href="#"><i class="bi bi-box-arrow-right"></i> Salir</a>
+        </div>
+        -->
+      </div>
+    </nav>
+
+    <!-- ************** MAIN ************** -->
+    <main class="col-md-10 ms-sm-auto px-md-4">
+      <!-- Topbar -->
+      <div class="topbar py-2 d-flex align-items-center justify-content-between">
+        <!-- Izquierda: Inicio + título -->
+        <div class="d-flex align-items-center gap-3">
+          <a href="https://app.promecorcobranzas.com/dashboard/" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-house"></i> Inicio
+          </a>
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-grid"></i>
+            <span class="fw-semibold">Panel</span>
+          </div>
+        </div>
+
+        <!-- Derecha: Usuario / dropdown -->
+        <div class="d-flex align-items-center">
+          {% if request.user.is_authenticated %}
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2"
+                      type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle"></i>
+                <span>
+                  {{ request.user.get_full_name|default:request.user.username|default:"Usuario" }}
+                </span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                {% if request.user.email %}
+                <li class="dropdown-header">{{ request.user.email }}</li>
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                <li>
+                  <form method="post" action="{% url 'logout' %}" class="px-2">
+                    {% csrf_token %}
+                    <button type="submit" class="dropdown-item text-danger">
+                      <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                    </button>
+                  </form>
+                </li>
+              </ul>
+            </div>
+          {% else %}
+            <span class="text-muted me-2"><i class="bi bi-person"></i> Invitado</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Contenido -->
+      <div class="main-content">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+  {% for message in messages %}
+  <div id="toast-{{ forloop.counter }}" class="toast align-items-center text-bg-primary border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">{{ message }}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- JS -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+  document.querySelectorAll('.toast').forEach(t => new bootstrap.Toast(t,{delay:3000}).show());
+  $(function () {
+    $('table').DataTable({
+      language:{url:'//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'},
+      order:[]
+    });
+  });
+</script>
+</body>
+</html>
+

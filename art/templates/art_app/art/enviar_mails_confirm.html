@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static humanize extra_lookup fmt %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 950px;">
+  <h2 class="mb-3">
+    <i class="bi bi-envelope-check me-2"></i>
+    Confirmar envío – {{ hoja }} ({{ periodo|default:"??/????" }})
+  </h2>
+
+  <p class="lead">
+    Se encontraron {{ grupos|length }} mails para enviar. ¿Deseas continuar?
+  </p>
+
+  <div class="row gy-3">
+    {% for g in grupos %}
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <strong>Dirección:</strong> {{ g.email }}<br>
+          <strong>Mails intimados:</strong> {{ g.intimado|yesno:"Sí,No" }}<br>
+          <strong>Saldo:</strong>
+          {{ g.filas|first|lookup:"Deuda total"|ars }}<br>
+          <strong>Vencimiento:</strong>
+          {{ g.filas|first|lookup:"Vencimiento"|ddmmyyyy }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form method="post" class="mt-4 d-inline">
+    {% csrf_token %}
+    <button type="submit" name="confirmar" class="btn btn-primary">
+      <i class="bi bi-send me-1"></i> Enviar
+    </button>
+  </form>
+
+  <a href="{% url 'art:art_enviar_mails' %}?reset=1"
+     class="btn btn-secondary ms-2">
+    Volver
+  </a>
+</div>
+{% endblock %}

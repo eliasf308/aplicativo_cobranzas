@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="container mt-4" style="max-width:900px;">
+  <h2><i class="bi bi-send-check me-2"></i>Historial de envíos ART</h2>
+
+  {% if envios %}
+  <table class="table table-sm table-bordered align-middle mt-3">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Fecha / hora</th>
+        <th>Archivo (MM-AAAA)</th>
+        <th>Hoja</th>
+        <th>Destinatario</th>
+        <th>Contratos</th>
+        <th>Usuario</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in envios %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ e.fecha_envio|date:"d/m/Y H:i" }}</td>
+        <td>{{ e.fecha_archivo|date:"m/Y" }}</td>
+        <td>{{ e.hoja }}</td>
+        <td>{{ e.email }}</td>
+        <td class="text-end">{{ e.contratos.count }}</td>
+        <td>{{ e.enviado_por.get_full_name|default:e.enviado_por.username }}</td>
+        <td>
+          {% if e.enviado %}<span class="badge bg-success">Enviado</span>
+          {% else %}<span class="badge bg-warning text-dark">Pendiente</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p class="lead mt-4">Aún no hay envíos registrados.</p>
+  {% endif %}
+</div>
+{% endblock %}

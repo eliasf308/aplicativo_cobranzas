@@ -1,0 +1,74 @@
+# ---- Python / Django ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+
+# Virtual envs
+env/
+.env/
+.venv/
+venv/
+*venv*/
+
+# Local settings / secrets
+.env
+*.local
+*.secret
+
+# SQLite (fallback local)
+db.sqlite3
+
+# Logs / runtime
+*.log
+*.pot
+*.pyc
+*.pid
+.DS_Store
+Thumbs.db
+
+# VS Code / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Node / front (por si acaso)
+node_modules/
+dist/
+build/
+
+# Django collectstatic / media locales
+staticfiles/
+static/
+media/
+
+# Reports / cache
+.coverage
+htmlcov/
+.cache/
+pytest_cache/
+
+# OS
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# Project artifacts
+*.xlsx
+*.xls
+*.csv
+*.zip
+*.pdf
+*.tmp
+*.bak
+
+# Cloudflared creds (ajusta si difiere)
+.cloudflared/
+*.json
+
+# Local scripts
+rebuild_env.bat
+start_cobranzas_named_tunnel.bat

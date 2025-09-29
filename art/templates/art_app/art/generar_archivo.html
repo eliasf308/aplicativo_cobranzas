@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Generar archivo ART{% endblock %}
+
+{% block extra_head %}
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-4">Generar archivo ART</h1>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form id="frm-art" class="d-flex flex-wrap gap-3 align-items-end"
+        method="post" action="{% url 'art:art_generar_archivo' %}">
+    {% csrf_token %}
+    <div>
+      <label class="form-label fw-bold" for="id_periodo">Periodo (mes-año):</label>
+      <input type="month" id="id_periodo" name="periodo" class="form-control" required>
+    </div>
+
+    <button id="btn-gen" type="submit"
+            class="btn btn-primary d-flex align-items-center gap-2">
+      <i class="bi bi-file-earmark-excel-fill"></i>
+      <span>Generar consolidado</span>
+      <span id="spin" class="spinner-border spinner-border-sm d-none"
+            role="status" aria-hidden="true"></span>
+    </button>
+  </form>
+
+  <!-- barra de progreso -->
+  <div id="prog-wrap" class="mt-4 d-none">
+    <div class="progress">
+      <div id="prog-bar" class="progress-bar" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  /* Obtener CSRF de cookie */
+  function getCookie(name){
+      const m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+      return m?decodeURIComponent(m.pop()):'';
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  /* Elementos */
+  const form   = document.getElementById('frm-art');
+  const btn    = document.getElementById('btn-gen');
+  const spin   = document.getElementById('spin');
+  const wrap   = document.getElementById('prog-wrap');
+  const bar    = document.getElementById('prog-bar');
+
+  form.addEventListener('submit', (ev)=>{
+      ev.preventDefault();
+
+      btn.disabled = true;
+      spin.classList.remove('d-none');
+      wrap.classList.remove('d-none');
+      bar.classList.remove('progress-bar-striped','progress-bar-animated');
+      bar.style.width="0%";
+
+      /* Preparar datos */
+      const fd = new FormData(form);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', form.action, true);
+      xhr.responseType = 'blob';
+      xhr.setRequestHeader('X-CSRFToken', csrftoken);
+
+      xhr.onload = function(){
+          if (xhr.status !== 200){
+              alert('Error al generar el archivo');
+              resetUI();
+              return;
+          }
+          const blob = xhr.response;
+          const periodo = fd.get('periodo');          // yyyy-mm
+          const [y,m]=periodo.split('-');
+          const filename = `Consolidado_ART_${m}-${y}.xlsx`;
+
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+          a.remove(); window.URL.revokeObjectURL(url);
+          resetUI();
+      };
+
+      xhr.onerror = function(){
+          alert('Error de conexión');
+          resetUI();
+      };
+
+      xhr.onprogress = function(evt){
+          if (evt.lengthComputable){
+              const pct = (evt.loaded/evt.total)*100;
+              bar.style.width = pct.toFixed(0)+'%';
+          }else{
+              /* Tamaño desconocido → animación indeterminada */
+              bar.classList.add('progress-bar-striped','progress-bar-animated');
+          }
+      };
+
+      xhr.send(fd);
+  });
+
+  function resetUI(){
+      btn.disabled=false;
+      spin.classList.add('d-none');
+      wrap.classList.add('d-none');
+      bar.style.width='0%';
+  }
+})();
+</script>
+{% endblock %}

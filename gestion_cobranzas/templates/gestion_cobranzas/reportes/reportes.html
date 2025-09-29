@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Reportes de Cargas</h2>
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label class="form-label"><strong>Desde</strong></label>
+            <input type="date" name="desde" class="form-control" value="{{ desde }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label"><strong>Hasta</strong></label>
+            <input type="date" name="hasta" class="form-control" value="{{ hasta }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label"><strong>Tipo de reporte</strong></label>
+            <select name="tipo" class="form-select">
+                <option value="">-- Seleccionar --</option>
+                <option value="planes" {% if tipo == 'planes' %}selected{% endif %}>Planes de Pago</option>
+                <option value="imputaciones" {% if tipo == 'imputaciones' %}selected{% endif %}>Imputaciones</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+            <a href="{% url 'reportes' %}" class="btn btn-secondary">Limpiar</a>
+        </div>
+    </form>
+
+    {% if rango_activo %}
+        {% if resultados %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="text-white" style="background-color: #003366;">
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Fecha y hora</th>
+                            <th>Archivo</th>
+                            {% if tipo == 'planes' %}
+                                <th>Planes cargados</th>
+                            {% elif tipo == 'imputaciones' %}
+                                <th>Cuotas imputadas</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultados %}
+                        <tr>
+                            <td>{{ item.usuario }}</td>
+                            <td>{{ item.fecha_carga|date:"d/m/Y H:i" }}</td>
+                            <td>{{ item.archivo }}</td>
+                            {% if tipo == 'planes' %}
+                                <td>{{ item.cantidad_cuotas }}</td>
+                            {% elif tipo == 'imputaciones' %}
+                                <td>{{ item.cantidad_cuotas_imputadas }}</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">No se encontraron cargas en ese rango.</div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
