@@ -212,7 +212,7 @@ class Command(BaseCommand):
         parser.add_argument("--periodo", default=None,
                             help="Período MM-YYYY para filtrar items (opcional).")
         parser.add_argument("--reset-periodo", action="store_true",
-                            help="Si se indica, borra previamente las filas del período destino antes de volcar.")
+                            help="(Obsoleto) Antes se usaba para forzar borrado; ahora el reset es AUTOMÁTICO según el alcance.")
         parser.add_argument("--aseguradora", default=None,
                             help="Filtrar por aseguradora (opcional).")
         parser.add_argument("--productor", default=None,
@@ -221,7 +221,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         lote_id = options.get("desde-lote")
         periodo_cli = options.get("periodo")
-        reset_periodo = bool(options.get("reset-periodo"))
+        # Mantengo la opción por compatibilidad, pero ya no se usa para decidir
+        # reset: el reset ahora es automático en función del alcance del volcado.
+        _reset_periodo_flag = bool(options.get("reset-periodo"))
         filtro_aseg = to_str(options.get("aseguradora")) or None
         filtro_prod = to_str(options.get("productor")) or None
 
@@ -237,11 +239,10 @@ class Command(BaseCommand):
                 "No se indicó --desde-lote ni --periodo. Se volcarán TODOS los items (puede tardar)."
             ))
 
-        if reset_periodo and periodo_date is None:
-            raise CommandError("--reset-periodo requiere indicar --periodo MM-YYYY.")
-
+        # 1) Obtener ITEMS a volcar
         items = list(iter_items_filtrados(lote_id, periodo_date))
 
+        # Aplicar filtros de alcance (aseguradora / productor) sobre los items a volcar
         if filtro_aseg:
             items = [it for it in items if to_str(get_attr(it, ["aseguradora", "compania", "compania_art", "aseguradora_nombre"])).lower() == filtro_aseg.lower()]
         if filtro_prod:
@@ -251,10 +252,48 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("No se encontraron items para volcar con los filtros indicados."))
             return
 
-        if reset_periodo:
-            borradas, _ = ArtDashboardContratoPeriodo.objects.filter(periodo=periodo_date).delete()
-            self.stdout.write(self.style.WARNING(f"Reset periodo {periodo_date.strftime('%m-%Y')}: {borradas} filas eliminadas."))
+        # 2) --- RESET AUTOMÁTICO PREVIO ---
+        # Determinar los períodos afectados por el volcado (si no se indicó --periodo,
+        # los inferimos de los propios items / lote).
+        def periodo_de_item(it) -> date | None:
+            p_val = get_attr(it, ["periodo", "periodo_str", "mes_periodo", "period"])
+            if not p_val:
+                lote_obj = get_attr(it, ["lote"])
+                if lote_obj:
+                    p_val = get_attr(lote_obj, ["periodo", "periodo_str", "mes_periodo", "period"])
+            if not p_val:
+                return None
+            try:
+                return parse_periodo_any(p_val)
+            except Exception:
+                return None
 
+        periodos_afectados = set()
+        if periodo_date is not None:
+            periodos_afectados.add(periodo_date)
+        else:
+            for it in items:
+                p = periodo_de_item(it)
+                if p:
+                    periodos_afectados.add(p)
+
+        borradas_total = 0
+        for p in sorted(periodos_afectados):
+            qs_reset = ArtDashboardContratoPeriodo.objects.filter(periodo__year=p.year, periodo__month=p.month)
+            if filtro_aseg:
+                qs_reset = qs_reset.filter(aseguradora__iexact=filtro_aseg)
+            if filtro_prod:
+                qs_reset = qs_reset.filter(productor__iexact=filtro_prod)
+            borradas, _ = qs_reset.delete()
+            borradas_total += borradas
+            alcance = f"{p:%Y-%m}"
+            if filtro_aseg:
+                alcance += f" | aseguradora={filtro_aseg}"
+            if filtro_prod:
+                alcance += f" | productor={filtro_prod}"
+            self.stdout.write(self.style.WARNING(f"Reset automático: borradas {borradas} filas de {alcance}."))
+
+        # 3) Upsert de los items del alcance
         creados = 0
         actualizados = 0
         errores = 0
@@ -263,7 +302,8 @@ class Command(BaseCommand):
             for it in items:
                 try:
                     data = build_dashboard_row_from_item(it, periodo_date, lote_id)
-                    if not (data["cuit"] and data["contrato"] and data["aseguradora"]):
+                    # Validación mínima de clave
+                    if not (data["cuit"] and data["contrato"] and data["aseguradora"] and data["periodo"]):
                         continue
 
                     obj, created = ArtDashboardContratoPeriodo.objects.update_or_create(
@@ -273,12 +313,15 @@ class Command(BaseCommand):
                         aseguradora=data["aseguradora"],
                         defaults=data,
                     )
-                    if created: creados += 1
-                    else: actualizados += 1
+                    if created:
+                        creados += 1
+                    else:
+                        actualizados += 1
                 except Exception as e:
                     errores += 1
                     raise CommandError(f"Error al volcar item ID={getattr(it,'id', '?')}: {e}")
 
         self.stdout.write(self.style.SUCCESS(
-            f"Volcado finalizado. Items procesados: {len(items)} | Creados: {creados} | Actualizados: {actualizados} | Errores: {errores}"
+            f"Volcado finalizado. Reseteadas: {borradas_total} | Items procesados: {len(items)} | "
+            f"Creados: {creados} | Actualizados: {actualizados} | Errores: {errores}"
         ))
