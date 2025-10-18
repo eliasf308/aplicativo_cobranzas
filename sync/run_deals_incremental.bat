@@ -1,11 +1,9 @@
 @echo off
-setlocal
-cd /d C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas
+cd /d "C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas"
 
-REM activar entorno
-call env\Scripts\activate.bat
+if not exist "logs" mkdir "logs"
 
-REM ejecutar y loguear salida
-python sync\sync_deals_incremental.py >> sync\_state\deals_sync.log 2>&1
+for /f %%i in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd_HHmmss')"') do set STAMP=%%i
 
-endlocal
+"C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas\env\Scripts\python.exe" -u sync\sync_deals_incremental.py ^
+  >> "logs\deals_incremental_%STAMP%.log" 2>&1

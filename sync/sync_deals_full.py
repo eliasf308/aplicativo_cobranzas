@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Incremental sync de Zoho CRM Contacts -> Postgres (public.crm_contacts)
+Full sync de Zoho CRM Deals -> Postgres (public.crm_deals)
 
-- Lista contactos modificados desde el último cursor (crm_sync_state.module='Contacts')
-  usando `criteria=(Modified_Time:after:...)`.
-- Expande por IDs trayendo **todos** los fields (settings/fields) respetando el límite de 50
-  (divide en chunks y fusiona por id).
-- Aplana al esquema existente; guarda `raw_json` si existe.
+- Trae TODOS los fields del módulo Deals (según permisos/layout) usando /settings/fields.
+- Respeta límite Zoho de 50 fields por request (divide en chunks y fusiona por id).
+- Aplana dinámicamente al esquema existente; guarda `raw_json` si existe.
 - Para columnas boolean que Zoho omite cuando son FALSE, graba False (evita NULLs artificiales).
 - Upsert con ON CONFLICT ("zoho_id") DO UPDATE y `synced_at = now()` si la columna existe.
+
+Requiere .env: ZOHO_API_DOMAIN, ZOHO_SELF_CLIENT_ID, ZOHO_SELF_CLIENT_SECRET, ZOHO_REFRESH_TOKEN,
+               DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 """
 
 from __future__ import annotations
 import json
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta, timezone
 
 import requests
 import psycopg2
@@ -22,14 +22,14 @@ import psycopg2.extras as pgx
 from dotenv import dotenv_values
 
 TABLE_SCHEMA = "public"
-TABLE_BASENAME = "crm_contacts"
+TABLE_BASENAME = "crm_deals"
 TABLE_NAME = f"{TABLE_SCHEMA}.{TABLE_BASENAME}"
 
-PER_PAGE = 200               # tamaño de página Zoho (listado)
-BULK_IDS_CHUNK = 60          # menor a 100 para robustez
+PER_PAGE = 200               # tamaño de página Zoho
+BULK_IDS_CHUNK = 100         # /Deals admite hasta 100 ids por request
 UPSERT_CHUNK = 200           # batch de upsert a DB
 SESSION_TIMEOUT = 90
-SAFE_LIST_FIELDS = ["id", "Modified_Time"]  # para listar con criterio
+SAFE_LIST_FIELDS = ["id", "Modified_Time", "Deal_Name", "Owner"]
 
 # ---------------- Utils ----------------
 
@@ -76,54 +76,29 @@ def get_existing_columns(conn) -> Dict[str, str]:
         )
         return {name: t.lower() for name, t in cur.fetchall()}
 
-def get_cursor(conn) -> Optional[datetime]:
-    with conn.cursor() as cur:
-        cur.execute("SELECT last_modified FROM public.crm_sync_state WHERE module='Contacts'")
-        r = cur.fetchone()
-        if r and r[0]:
-            return r[0]
-    return None
-
-def set_cursor(conn, new_dt: datetime):
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO public.crm_sync_state (module, last_modified, updated_at)
-            VALUES ('Contacts', %s, now())
-            ON CONFLICT (module) DO UPDATE
-            SET last_modified=EXCLUDED.last_modified,
-                updated_at=now()
-            """,
-            (new_dt,)
-        )
-    conn.commit()
-
 # ---------------- Zoho helpers ----------------
 
 _FIELDS_CACHE: Optional[List[str]] = None
 
-def get_contacts_api_fields(env, token) -> List[str]:
+def get_deals_api_fields(env, token) -> List[str]:
     global _FIELDS_CACHE
     if _FIELDS_CACHE is not None:
         return _FIELDS_CACHE
     url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/settings/fields"
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
-    params = {"module": "Contacts"}
+    params = {"module": "Deals"}
     r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
     r.raise_for_status()
     j = r.json() or {}
     _FIELDS_CACHE = [f.get("api_name") for f in j.get("fields", []) if f.get("api_name")]
     return _FIELDS_CACHE
 
-def fetch_page_ids_since(env, token, since_iso: str, page_token: Optional[str]):
-    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Contacts"
+# ---------------- Listado (IDs) ----------------
+
+def fetch_page_ids(env, token, page_token: Optional[str]):
+    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Deals"
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
-    # criteria: Modified_Time >= since
-    params = {
-        "fields": ",".join(SAFE_LIST_FIELDS),
-        "criteria": f"(Modified_Time:after:{since_iso})",
-        "per_page": PER_PAGE
-    }
+    params = {"fields": "id", "per_page": PER_PAGE}
     if page_token:
         params["page_token"] = page_token
     r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
@@ -135,13 +110,19 @@ def fetch_page_ids_since(env, token, since_iso: str, page_token: Optional[str]):
     info = js.get("info") or {}
     more = bool(info.get("more_records"))
     next_token = info.get("next_page_token") or None
-    return data, next_token, more
+    ids = [str(rec.get('id')) for rec in data if rec.get('id')]
+    return ids, next_token, more
+
+# ---------------- Expandir por IDs (≤ 50 fields) ----------------
 
 def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
     if not ids:
         return []
-    fields_all = get_contacts_api_fields(env, token) or []
-    base_extra = ["Owner", "Full_Name", "Last_Name", "Email", "Created_Time", "Modified_Time", "Account_Name"]
+    fields_all = get_deals_api_fields(env, token) or []
+    base_extra = [
+        "Owner", "Deal_Name", "Stage", "Amount", "Closing_Date",
+        "Account_Name", "Contact_Name", "Created_Time", "Modified_Time"
+    ]
 
     def dedup(seq):
         seen, out = set(), []
@@ -161,7 +142,7 @@ def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
         chunks.append(dedup(chunk_fields))
         idx += 49
 
-    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Contacts"
+    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Deals"
     headers = {"Authorization": f"Zoho-oauthtoken {token}"}
 
     merged: Dict[str, Dict[str, Any]] = {}
@@ -185,6 +166,13 @@ def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
 
 # ---------------- Flatten dinámico ----------------
 
+def norm_col(name: str) -> str:
+    s = name.replace(" ", "_").replace("/", "_").replace("-", "_")
+    s = s.replace("(", "").replace(")", "").replace(".", "").replace("%", "")
+    while "__" in s:
+        s = s.replace("__", "_")
+    return s.lower()
+
 _DEF_JSON_TYPES = ("json", "jsonb")
 
 def _ensure_json_text(val):
@@ -199,14 +187,7 @@ def _ensure_json_text(val):
         return json.dumps(val, ensure_ascii=False)
     return json.dumps(str(val), ensure_ascii=False)
 
-def norm_col(name: str) -> str:
-    s = name.replace(" ", "_").replace("/", "_").replace("-", "_")
-    s = s.replace("(", "").replace(")", "").replace(".", "").replace("%", "")
-    while "__" in s:
-        s = s.replace("__", "_")
-    return s.lower()
-
-def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> Dict[str, Any]:
+def flatten_deal(record: Dict[str, Any], existing_types: Dict[str, str]) -> Dict[str, Any]:
     row: Dict[str, Any] = {}
     existing_cols = set(existing_types.keys())
 
@@ -240,7 +221,11 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
         _set("owner_name", owner.get("name"))
         _set("owner_email", owner.get("email"))
 
-    # Account_Name (lookup) puede venir dict o string
+    # Deal_Name
+    if "Deal_Name" in record:
+        _set("deal_name", record.get("Deal_Name"))
+
+    # lookups típicos
     acc = record.get("Account_Name")
     if isinstance(acc, dict):
         _set("account_id", acc.get("id"))
@@ -248,17 +233,16 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
     elif isinstance(acc, str):
         _set("account_name", acc)
 
-    # Full_Name / Last_Name / Email si existen como columnas
-    if "Full_Name" in record:
-        _set("full_name", record.get("Full_Name"))
-    if "Last_Name" in record:
-        _set("last_name", record.get("Last_Name"))
-    if "Email" in record:
-        _set("email", record.get("Email"))
+    ct = record.get("Contact_Name")
+    if isinstance(ct, dict):
+        _set("contact_id", ct.get("id"))
+        _set("contact_name", ct.get("name"))
+    elif isinstance(ct, str):
+        _set("contact_name", ct)
 
     # resto de fields -> mapeo generico
     for k, v in record.items():
-        if k in ("id", "Owner", "Account_Name", "Full_Name", "Last_Name", "Email", "Created_Time", "Modified_Time"):
+        if k in ("id", "Owner", "Account_Name", "Contact_Name", "Deal_Name", "Created_Time", "Modified_Time"):
             continue
         base_col = norm_col(k)
 
@@ -357,56 +341,25 @@ def main():
         existing_types = get_existing_columns(conn)
         existing_cols = set(existing_types.keys())
 
-        # Cursor con pequeño solapamiento para no perder cambios
-        cursor_dt = get_cursor(conn)
-        if cursor_dt is None:
-            # fallback: desde lo que tengamos en tabla, sino muy atrás
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT max(modified_time) FROM {TABLE_NAME}")
-                r = cur.fetchone()
-                cursor_dt = r[0] if r and r[0] else datetime.now(timezone.utc) - timedelta(days=3650)
-        start_dt = cursor_dt - timedelta(minutes=5)
-        # Zoho espera offset de zona; usamos -03:00 (AR) para coherencia con tus datos
-        since_iso = start_dt.astimezone().isoformat(timespec="seconds")
-        print(f"Iniciando incremental Contacts desde: {since_iso}")
-
-        total = 0
+        total_ids = 0
         page_token = None
         more = True
-        max_seen_dt: Optional[datetime] = cursor_dt
-
+        print("Paginando Deals (full)...")
         while more:
-            page, next_token, more = fetch_page_ids_since(env, token, since_iso, page_token)
+            ids, next_token, more = fetch_page_ids(env, token, page_token)
             page_token = next_token
-            if not page:
+            if not ids:
                 break
 
-            ids = []
-            for rec in page:
-                rid = rec.get("id")
-                if rid:
-                    ids.append(str(rid))
-                mt = rec.get("Modified_Time")
-                if mt:
-                    try:
-                        dt = datetime.fromisoformat(mt)
-                    except Exception:
-                        dt = None
-                    if dt and (max_seen_dt is None or dt > max_seen_dt):
-                        max_seen_dt = dt
-
+            total_ids += len(ids)
             for group in chunked(ids, BULK_IDS_CHUNK):
                 expanded = fetch_by_ids_all_fields(env, token, group)
-                rows = [flatten_contact(rec, existing_types) for rec in expanded]
+                rows = [flatten_deal(rec, existing_types) for rec in expanded]
                 upsert_rows(conn, rows, existing_cols)
-                total += len(rows)
-                print(f"Contacts lote: {len(rows)} (acumulado: {total})")
 
-        if max_seen_dt:
-            set_cursor(conn, max_seen_dt)
-            print(f"Contacts cursor actualizado a: {max_seen_dt.isoformat(timespec='seconds')}")
+            print(f"Página: {len(ids)} (acum: {total_ids})")
 
-        print(f"Contacts incremental terminado. Registros procesados: {total}")
+        print(f"Full Deals terminado. Registros procesados: {total_ids}")
 
 if __name__ == '__main__':
     main()

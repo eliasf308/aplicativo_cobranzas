@@ -1,131 +1,360 @@
-# sync_contacts_full.py
-import os
-import time
+# -*- coding: utf-8 -*-
+"""
+Full sync de Zoho CRM Contacts -> Postgres (public.crm_contacts)
+
+- Trae **todos** los fields del módulo Contacts (según permisos/layout) usando /settings/fields.
+- Respeta límite Zoho de **50 fields por request** (divide en chunks y **fusiona por id**).
+- Aplana dinámicamente al **esquema existente**; guarda `raw_json` si existe.
+- Para columnas **boolean** omitidas por Zoho cuando son FALSE, graba `False` (evita NULLs artificiales).
+- Upsert con `ON CONFLICT ("zoho_id") DO UPDATE` y `synced_at = now()` si la columna existe.
+
+Requiere .env: ZOHO_API_DOMAIN, ZOHO_SELF_CLIENT_ID, ZOHO_SELF_CLIENT_SECRET, ZOHO_REFRESH_TOKEN,
+               DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+"""
+
+from __future__ import annotations
+import json
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+
 import requests
 import psycopg2
-from psycopg2.extras import Json
-from dotenv import load_dotenv
+import psycopg2.extras as pgx
+from dotenv import dotenv_values
 
-load_dotenv()
+TABLE_SCHEMA = "public"
+TABLE_BASENAME = "crm_contacts"
+TABLE_NAME = f"{TABLE_SCHEMA}.{TABLE_BASENAME}"
 
-ACCOUNTS_BASE = "https://accounts.zoho.com"
-API_BASE = os.getenv("ZOHO_API_DOMAIN", "https://www.zohoapis.com")
-SELF_ID = os.getenv("ZOHO_SELF_CLIENT_ID")
-SELF_SECRET = os.getenv("ZOHO_SELF_CLIENT_SECRET")
-REFRESH_TOKEN = os.getenv("ZOHO_REFRESH_TOKEN")
+PER_PAGE = 200                # tamaño de página Zoho
+BULK_IDS_CHUNK = 100          # /Contacts admite hasta 100 ids por request
+UPSERT_CHUNK = 200            # batch de upsert a DB
+SESSION_TIMEOUT = 90
+SAFE_LIST_FIELDS = ["id", "Modified_Time", "Full_Name", "Owner"]
 
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", "5432")
+# ---------------- Utils ----------------
 
-MODULE = "Contacts"
-FIELDS = "id,Full_Name,Last_Name,Email,Owner,Account_Name,Created_Time,Modified_Time"
-PER_PAGE = 200
+def load_env() -> Dict[str, str]:
+    env = dotenv_values('.env')
+    required = [
+        'ZOHO_API_DOMAIN', 'ZOHO_SELF_CLIENT_ID', 'ZOHO_SELF_CLIENT_SECRET', 'ZOHO_REFRESH_TOKEN',
+        'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'
+    ]
+    missing = [k for k in required if not env.get(k)]
+    if missing:
+        raise RuntimeError(f"Faltan variables en .env: {', '.join(missing)}")
+    return env
 
-def get_access_token():
-    r = requests.post(
-        f"{ACCOUNTS_BASE}/oauth/v2/token",
-        data={
-            "grant_type": "refresh_token",
-            "client_id": SELF_ID,
-            "client_secret": SELF_SECRET,
-            "refresh_token": REFRESH_TOKEN,
-        },
-        timeout=30,
-    )
+def get_access_token(env: Dict[str, str]) -> str:
+    url = "https://accounts.zoho.com/oauth/v2/token"
+    data = {
+        "grant_type": "refresh_token",
+        "client_id": env["ZOHO_SELF_CLIENT_ID"],
+        "client_secret": env["ZOHO_SELF_CLIENT_SECRET"],
+        "refresh_token": env["ZOHO_REFRESH_TOKEN"],
+    }
+    r = requests.post(url, data=data, timeout=SESSION_TIMEOUT)
     r.raise_for_status()
-    js = r.json()
-    if "access_token" not in js:
-        raise RuntimeError(f"Error al renovar token: {js}")
-    return js["access_token"]
+    return r.json()["access_token"]
 
-def fetch_page(token, page_token=None):
-    params = {"per_page": PER_PAGE, "fields": FIELDS}
+# ---------------- DB helpers ----------------
+
+def pg_connect(env):
+    return psycopg2.connect(
+        host=env["DB_HOST"], port=int(env["DB_PORT"]), dbname=env["DB_NAME"],
+        user=env["DB_USER"], password=env["DB_PASSWORD"], connect_timeout=10,
+    )
+
+def get_existing_columns(conn) -> Dict[str, str]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT column_name, COALESCE(udt_name, data_type) AS t
+            FROM information_schema.columns
+            WHERE table_schema=%s AND table_name=%s
+            """,
+            (TABLE_SCHEMA, TABLE_BASENAME)
+        )
+        return {name: t.lower() for name, t in cur.fetchall()}
+
+# ---------------- Zoho helpers ----------------
+
+_FIELDS_CACHE: Optional[List[str]] = None
+
+def get_contacts_api_fields(env, token) -> List[str]:
+    global _FIELDS_CACHE
+    if _FIELDS_CACHE is not None:
+        return _FIELDS_CACHE
+    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/settings/fields"
+    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
+    params = {"module": "Contacts"}
+    r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
+    r.raise_for_status()
+    j = r.json() or {}
+    _FIELDS_CACHE = [f.get("api_name") for f in j.get("fields", []) if f.get("api_name")]
+    return _FIELDS_CACHE
+
+# ---------------- Listado (IDs) ----------------
+
+def fetch_page_ids(env, token, page_token: Optional[str]):
+    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Contacts"
+    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
+    params = {"fields": "id", "per_page": PER_PAGE}
     if page_token:
         params["page_token"] = page_token
-    r = requests.get(
-        f"{API_BASE}/crm/v5/{MODULE}",
-        headers={"Authorization": f"Zoho-oauthtoken {token}"},
-        params=params,
-        timeout=60,
-    )
-    if r.status_code == 429:
-        time.sleep(2)
-        return fetch_page(token, page_token)
+    r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
+    if r.status_code == 204:
+        return [], None, False
     r.raise_for_status()
-    js = r.json()
-    data = js.get("data", []) or []
-    info = js.get("info", {}) or {}
-    return data, info.get("next_page_token"), bool(info.get("more_records"))
+    js = r.json() or {}
+    data = js.get("data") or []
+    info = js.get("info") or {}
+    more = bool(info.get("more_records"))
+    next_token = info.get("next_page_token") or None
+    ids = [str(rec.get('id')) for rec in data if rec.get('id')]
+    return ids, next_token, more
 
-def upsert_batch(conn, rows):
-    sql = """
-    INSERT INTO public.crm_contacts
-      (zoho_id, full_name, last_name, email,
-       account_id, account_name,
-       owner_id, owner_name, owner_email,
-       created_time, modified_time, raw_json)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-    ON CONFLICT (zoho_id) DO UPDATE SET
-       full_name    = EXCLUDED.full_name,
-       last_name    = EXCLUDED.last_name,
-       email        = EXCLUDED.email,
-       account_id   = EXCLUDED.account_id,
-       account_name = EXCLUDED.account_name,
-       owner_id     = EXCLUDED.owner_id,
-       owner_name   = EXCLUDED.owner_name,
-       owner_email  = EXCLUDED.owner_email,
-       created_time = EXCLUDED.created_time,
-       modified_time= EXCLUDED.modified_time,
-       raw_json     = EXCLUDED.raw_json,
-       synced_at    = now();
-    """
+# ---------------- Expandir por IDs (≤ 50 fields) ----------------
+
+def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
+    if not ids:
+        return []
+    fields_all = get_contacts_api_fields(env, token) or []
+    base_extra = ["Owner", "Full_Name", "Last_Name", "Email", "Created_Time", "Modified_Time", "Account_Name"]
+
+    def dedup(seq):
+        seen, out = set(), []
+        for x in seq:
+            if x and x not in seen:
+                seen.add(x); out.append(x)
+        return out
+
+    fields_no_base = [f for f in fields_all if f not in ("id",) + tuple(base_extra)]
+    chunks: List[List[str]] = []
+    first_room = 50 - 1 - len(base_extra)
+    first_chunk_rest = fields_no_base[:max(0, first_room)]
+    chunks.append(dedup(["id"] + base_extra + first_chunk_rest))
+    idx = len(first_chunk_rest)
+    while idx < len(fields_no_base):
+        chunk_fields = ["id"] + fields_no_base[idx: idx + 49]
+        chunks.append(dedup(chunk_fields))
+        idx += 49
+
+    url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Contacts"
+    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
+
+    merged: Dict[str, Dict[str, Any]] = {}
+    for fields in chunks:
+        params = {"ids": ",".join(ids), "fields": ",".join(fields)}
+        r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
+        if r.status_code >= 400:
+            print(f"[ERROR] fetch_by_ids_all_fields {r.status_code}: {r.text[:800]}")
+            r.raise_for_status()
+        for rec in (r.json().get("data") or []):
+            rid = str(rec.get("id")) if rec else None
+            if not rid:
+                continue
+            if rid not in merged:
+                merged[rid] = rec
+            else:
+                for k, v in rec.items():
+                    if v is not None and (k not in merged[rid] or merged[rid][k] in (None, "", [])):
+                        merged[rid][k] = v
+    return list(merged.values())
+
+# ---------------- Flatten dinámico ----------------
+
+def norm_col(name: str) -> str:
+    s = name.replace(" ", "_").replace("/", "_").replace("-", "_")
+    s = s.replace("(", "").replace(")", "").replace(".", "").replace("%", "")
+    while "__" in s:
+        s = s.replace("__", "_")
+    return s.lower()
+
+_DEF_JSON_TYPES = ("json", "jsonb")
+
+def _ensure_json_text(val):
+    if val is None:
+        return "null"
+    if isinstance(val, (dict, list, bool, int, float)):
+        return json.dumps(val, ensure_ascii=False)
+    if isinstance(val, str):
+        s = val.strip()
+        if s.startswith("{") or s.startswith("["):
+            return s
+        return json.dumps(val, ensure_ascii=False)
+    return json.dumps(str(val), ensure_ascii=False)
+
+def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> Dict[str, Any]:
+    row: Dict[str, Any] = {}
+    existing_cols = set(existing_types.keys())
+
+    def _set(col: str, val):
+        if col not in existing_cols:
+            return
+        t = existing_types.get(col, "")
+        if t in _DEF_JSON_TYPES:
+            row[col] = _ensure_json_text(val)
+        else:
+            if isinstance(val, (dict, list)):
+                row[col] = json.dumps(val, ensure_ascii=False)
+            else:
+                row[col] = val
+
+    # ids
+    if "id" in record:
+        _set("id", str(record["id"]))
+    if "zoho_id" in existing_cols and "id" in record:
+        _set("zoho_id", str(record["id"]))
+
+    # timestamps base
+    for api_k, col_k in [("Created_Time", "created_time"), ("Modified_Time", "modified_time")]:
+        if api_k in record and record[api_k]:
+            _set(col_k, record[api_k])
+
+    # Owner
+    owner = record.get("Owner")
+    if isinstance(owner, dict):
+        _set("owner_id", owner.get("id"))
+        _set("owner_name", owner.get("name"))
+        _set("owner_email", owner.get("email"))
+
+    # Account_Name (lookup) puede venir dict o string
+    acc = record.get("Account_Name")
+    if isinstance(acc, dict):
+        _set("account_id", acc.get("id"))
+        _set("account_name", acc.get("name"))
+    elif isinstance(acc, str):
+        _set("account_name", acc)
+
+    # Full_Name / Last_Name / Email si existen como columnas
+    if "Full_Name" in record:
+        _set("full_name", record.get("Full_Name"))
+    if "Last_Name" in record:
+        _set("last_name", record.get("Last_Name"))
+    if "Email" in record:
+        _set("email", record.get("Email"))
+
+    # resto de fields -> mapeo generico
+    for k, v in record.items():
+        if k in ("id", "Owner", "Account_Name", "Full_Name", "Last_Name", "Email", "Created_Time", "Modified_Time"):
+            continue
+        base_col = norm_col(k)
+
+        # lookups
+        if isinstance(v, dict) and ("id" in v or "name" in v or "email" in v):
+            _set(f"{base_col}_id", v.get("id"))
+            _set(f"{base_col}_name", v.get("name"))
+            _set(f"{base_col}_email", v.get("email"))
+            if base_col in existing_cols and base_col not in row:
+                _set(base_col, v.get("name") or v.get("id"))
+            continue
+
+        # listas
+        if isinstance(v, list):
+            if base_col in existing_cols:
+                _set(base_col, v)
+            if v and isinstance(v[0], dict):
+                _set(f"{base_col}_ids", "|".join([str(x.get("id") or "") for x in v]))
+                _set(f"{base_col}_names", "|".join([str(x.get("name") or "") for x in v]))
+            continue
+
+        # dict genérico
+        if isinstance(v, dict):
+            if base_col in existing_cols:
+                _set(base_col, v)
+            continue
+
+        # primitivos
+        _set(base_col, v)
+
+    # raw_json completo
+    if "raw_json" in existing_cols:
+        _set("raw_json", record)
+
+    # default FALSE para booleanos omitidos
+    for col, t in existing_types.items():
+        if col not in row and t in ("bool", "boolean"):
+            row[col] = False
+
+    return row
+
+# ---------------- Upsert ----------------
+
+def chunked(seq, n):
+    buf = []
+    for x in seq:
+        buf.append(x)
+        if len(buf) >= n:
+            yield buf
+            buf = []
+    if buf:
+        yield buf
+
+def upsert_rows(conn, rows: List[Dict[str, Any]], existing_cols: set):
+    if not rows:
+        return
+
+    all_keys = set()
+    for r in rows:
+        all_keys |= set(r.keys())
+    cols = [c for c in sorted(all_keys) if c in existing_cols]
+    if not cols:
+        return
+
+    cols_sql = ",".join(f'"{c}"' for c in cols)
+    update_assign = ",".join(f'"{c}"=EXCLUDED."{c}"' for c in cols if c != "zoho_id")
+    if 'synced_at' in existing_cols:
+        update_assign += ", \"synced_at\"=now()"
+
     with conn.cursor() as cur:
-        for rec in rows:
-            owner = rec.get("Owner") or {}
-            acc   = rec.get("Account_Name") or {}
-            cur.execute(sql, (
-                rec.get("id"),
-                rec.get("Full_Name"),
-                rec.get("Last_Name"),
-                rec.get("Email"),
-                acc.get("id"),
-                acc.get("name"),
-                owner.get("id"),
-                owner.get("name"),
-                owner.get("email"),
-                rec.get("Created_Time"),
-                rec.get("Modified_Time"),
-                Json(rec),
-            ))
+        for batch in chunked(rows, UPSERT_CHUNK):
+            values = [[r.get(c) for c in cols] for r in batch]
+            pgx.execute_values(
+                cur,
+                f'INSERT INTO {TABLE_NAME} ({cols_sql}) VALUES %s '
+                f'ON CONFLICT ("zoho_id") DO UPDATE SET {update_assign}',
+                values
+            )
+            if 'synced_at' in existing_cols:
+                zoho_ids = [r.get('zoho_id') for r in batch if r.get('zoho_id')]
+                if zoho_ids:
+                    cur.execute(
+                        f'UPDATE {TABLE_NAME} SET "synced_at"=now() '
+                        f'WHERE "synced_at" IS NULL AND "zoho_id" = ANY(%s)', (zoho_ids,)
+                    )
+    conn.commit()
 
-def full_sync_contacts():
-    token = get_access_token()
-    conn = psycopg2.connect(
-        dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST, port=DB_PORT
-    )
-    total = 0
-    page = 0
-    page_token = None
-    try:
-        while True:
-            page += 1
-            rows, next_token, more = fetch_page(token, page_token)
-            if not rows:
-                break
-            with conn:
-                upsert_batch(conn, rows)
-            total += len(rows)
-            print(f"Página {page}: {len(rows)} contactos (acumulado: {total})")
-            if not more:
-                break
+# ---------------- Main ----------------
+
+def main():
+    env = load_env()
+    token = get_access_token(env)
+
+    with pg_connect(env) as conn:
+        conn.autocommit = False
+        existing_types = get_existing_columns(conn)
+        existing_cols = set(existing_types.keys())
+
+        total_ids = 0
+        page_token = None
+        more = True
+        print("Paginando Contacts (full)...")
+        while more:
+            ids, next_token, more = fetch_page_ids(env, token, page_token)
             page_token = next_token
-            time.sleep(0.2)
-    finally:
-        conn.close()
-    print(f"Sync Contacts completo. Registros procesados: {total}")
+            if not ids:
+                break
 
-if __name__ == "__main__":
-    full_sync_contacts()
+            total_ids += len(ids)
+            for group in chunked(ids, BULK_IDS_CHUNK):
+                expanded = fetch_by_ids_all_fields(env, token, group)
+                rows = [flatten_contact(rec, existing_types) for rec in expanded]
+                upsert_rows(conn, rows, existing_cols)
+
+            print(f"Página: {len(ids)} (acum: {total_ids})")
+
+        print(f"Full Contacts terminado. Registros procesados: {total_ids}")
+
+if __name__ == '__main__':
+    main()

@@ -2,19 +2,14 @@ from __future__ import annotations
 """
 Servicio de consolidación de deudas ART
 ---------------------------------------
-Reglas principales (nombres exactos del MAESTRO):
-• Cruce 1:1 por CUIT (normalizado a dígitos).
-    – Si existe exactamente 1 fila con «Cuenta Perdida» vacía → se usa ésa (Vigente).
-    – Si existen 2 o más filas con «Cuenta Perdida» vacía → el CUIT es ambiguo → «No cruzan».
-    – Si existen 0 filas con «Cuenta Perdida» vacía pero hay duplicados → se usa la primera.
-• La columna «Aseguradora» del Consolidado sale del MAESTRO.
+Reglas principales:
+• Cruce por **(CUIT + Aseguradora de ORIGEN)**. En el maestro se elige la fila de esa aseguradora con «Cuenta Perdida» vacía (Vigente). Si no hay vigente, se usa la primera no vigente. Si no existe ninguna fila para ese par → va a «No cruzan».
+• La columna «Aseguradora» del Consolidado sale del ORIGEN (archivo de deuda).
 • «Premier» sale de «Referido por (Nombre de Cuenta)» (PREMIER→Premier; otro→No es Premier).
 • «Estado contrato» sale de «Cuenta Perdida» (vacío→Vigente; texto→ese texto).
 • «Productor» vacío → PROMECOR (en Consolidado).
-• Q = Deuda/Costo si Costo>0; si Costo es 0 o vacío → Costo y Q quedan vacíos.
-• Se EXCLUYE de «Consolidado»:
-    – Deuda total entre 0 y 999 (inclusive). (Se incluyen negativas y ≥1000).
-    – Ramo = "Domestica".
+• Q = Deuda/Costo si Costo=0 o vacío → Costo y Q vacíos.
+• Se excluye de «Consolidado»: Deuda total entre 0 y 999 (incl.), y Ramo="Domestica".
 • “Andina ART”: agrupar por CUIT y sumar (tabla dinámica de Saldo).
 • “Experta”: deuda con signo invertido → se invierte.
 • Todas las hojas comparten las mismas columnas que «Consolidado». «Agregar costo mensual» agrega «Capitas».
@@ -95,6 +90,10 @@ def _norm_cuit_str(s: pd.Series) -> pd.Series:
          .str.zfill(11)
          .str[-11:]
     )
+
+def _norm_aseg_str(s: pd.Series) -> pd.Series:
+    """Normaliza nombres de aseguradora para matching (strip + upper)."""
+    return s.astype(str).str.strip().str.upper()
 
 def _ensure_columns(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     out = df.copy()
@@ -222,8 +221,8 @@ def _leer_deudas_archivo(fp: Path, nombre_aseg: str, mapeo: pd.DataFrame) -> pd.
 
 def _cargar_deudas(periodo: str, mapeo: pd.DataFrame) -> pd.DataFrame:
     """
-    Lee todas las carpetas de aseguradoras y devuelve **UNA FILA POR CUIT**:
-    suma la deuda total del período, sin importar cuántas aseguradoras traigan monto.
+    Lee todas las carpetas de aseguradoras y devuelve **UNA FILA POR (CUIT, ASEGURADORA_ORIGEN)**:
+    suma la deuda total del período por aseguradora de origen.
     """
     fn = f"{_norm_periodo(periodo)}.xlsx"
     dfs: List[pd.DataFrame] = []
@@ -244,12 +243,10 @@ def _cargar_deudas(periodo: str, mapeo: pd.DataFrame) -> pd.DataFrame:
 
     deudas = pd.concat(dfs, ignore_index=True)
 
-    # 🔒 Unificación global: 1 sola fila por CUIT para todo el período
-    # (casos especiales por aseguradora ya se aplicaron al leer cada archivo)
+    # 🔒 Unificación por (CUIT, aseguradora_origen)
     deudas = (
-        deudas.groupby("cuit", as_index=False, sort=False)["deuda_total"]
+        deudas.groupby(["cuit", "aseguradora_origen"], as_index=False, sort=False)["deuda_total"]
               .sum()
-              .assign(aseguradora_origen="(varias)")
     )
     return deudas
 
@@ -262,34 +259,38 @@ def df_consolidado(periodo: str) -> pd.DataFrame:
     mapeo = _leer_mapeo_aseguradoras(MAPEO_ASEG_PATH)
     deudas = _cargar_deudas(periodo, mapeo)
 
-    # Resolver duplicados por CUIT en maestro según reglas:
-    #   - 1 sola fila con Cuenta Perdida vacía => válida (Vigente)
-    #   - 2+ filas con Cuenta Perdida vacía => AMBIGUO => va a "No cruzan"
-    #   - 0 filas vacías => tomar primera
+    # Flag Vigente (Cuenta Perdida vacía)
     is_blank = maestro[M_CUENTA_PERDIDA].isna() | (maestro[M_CUENTA_PERDIDA].astype(str).str.strip() == "")
     maestro["_blank"] = is_blank
+    maestro["Vigente"] = maestro["_blank"]
 
-    counts_blank = maestro.groupby(M_CUIT)["_blank"].sum()
-    cuits_ambig: Set[str] = set(counts_blank[counts_blank > 1].index)   # 2+ vacías → ambiguo
-    cuits_con_vigente_unico: Set[str] = set(counts_blank[counts_blank == 1].index)
+    # Normalizaciones clave
+    maestro["_ASEG_n"] = _norm_aseg_str(maestro[M_ASEGURADORA])
+    deudas["_ASEG_ORIGEN_n"] = _norm_aseg_str(deudas["aseguradora_origen"])
 
-    # Ordenamos: primero los que tienen _blank=True
-    maestro_sorted = maestro.sort_values([M_CUIT, "_blank"], ascending=[True, False])
+    # Compactar maestro a 1 fila por (CUIT, Aseguradora): Vigente primero
+    maestro_sorted = maestro.sort_values([M_CUIT, "_ASEG_n", "Vigente"], ascending=[True, True, False])
+    maestro_compacto = maestro_sorted.drop_duplicates([M_CUIT, "_ASEG_n"], keep="first")
 
-    # Elegimos una fila por CUIT:
-    maestro_1a1 = maestro_sorted.drop_duplicates(M_CUIT, keep="first")
-    # Removemos CUITs ambiguos (2+ vacías)
-    maestro_1a1 = maestro_1a1[~maestro_1a1[M_CUIT].isin(cuits_ambig)]
+    # Merge por (CUIT, Aseguradora_origen)
+    df = deudas.merge(
+        maestro_compacto,
+        how="left",
+        left_on=["cuit", "_ASEG_ORIGEN_n"],
+        right_on=[M_CUIT, "_ASEG_n"],
+        suffixes=("", "_m"),
+    )
 
-    # Merge 1:1 por CUIT (deudas ya está 1xCUIT)
-    df = pd.merge(deudas, maestro_1a1, left_on="cuit", right_on=M_CUIT, how="inner")
+    # Filtrar a los que SÍ cruzan (hay fila en maestro para ese par CUIT+ASEG)
+    df = df[df["_ASEG_n"].notna()].copy()
 
     # Derivar columnas
     df["Periodo"]          = _norm_periodo(periodo)
     df["Razón social"]     = df[M_RAZON]
     df["CUIT"]             = df[M_CUIT]
     df["Contrato"]         = pd.to_numeric(df[M_CONTRATO], errors="coerce")  # entero
-    df["Aseguradora"]      = df[M_ASEGURADORA]
+    # Aseguradora: del ORIGEN DE DEUDA (no del maestro)
+    df["Aseguradora"]      = df["aseguradora_origen"]
     df["Deuda total"]      = _to_number_ar_series(df["deuda_total"], decimals=2)
     df["Costo mensual"]    = _to_number_ar_series(df[M_COSTO], decimals=2)
 
@@ -311,11 +312,11 @@ def df_consolidado(periodo: str) -> pd.DataFrame:
         lambda x: "Premier" if str(x).strip().upper() == "PREMIER" else "No es Premier"
     )
 
-    # Resto de campos del maestro
-    df["Email del trato"]     = df[M_EMAIL]
-    df["No contactar"]        = df[M_NO_CONTACTAR]
+    # Email y No contactar del maestro
+    df["Email del trato"]  = df[M_EMAIL]
+    df["No contactar"]     = df[M_NO_CONTACTAR]
 
-    # Productor
+    # Productor (si vacío → PROMECOR)
     if M_PRODUCTOR1 in df.columns and df[M_PRODUCTOR1].notna().any():
         prod = df[M_PRODUCTOR1]
     else:
@@ -334,8 +335,9 @@ def df_consolidado(periodo: str) -> pd.DataFrame:
     df = df[(deuda_num.ge(1000)) | (deuda_num.lt(0))]
 
     out = df[COLUMNS_ORDER].copy()
-    out.attrs["cuits_ambig"] = cuits_ambig
-    out.attrs["cuits_con_vigente_unico"] = cuits_con_vigente_unico
+    # Atributos de auditoría (compatibilidad con generate_xlsx)
+    out.attrs["cuits_ambig"] = set()
+    out.attrs["cuits_con_vigente_unico"] = set()
     return out
 
 
@@ -344,45 +346,54 @@ def df_consolidado(periodo: str) -> pd.DataFrame:
 # ------------------------------------------------------------------#
 def df_no_cruzan(periodo: str, cuits_duplicados: Set[str]) -> pd.DataFrame:
     """
-    cuits_duplicados: CUITs ambiguos (2+ filas con «Cuenta Perdida» vacía) detectados en el maestro.
-    Además entran aquí los CUIT de deudas que no estén en el maestro 1xCUIT (inner merge).
+    Entra aquí:
+      - (CUIT, Aseguradora_origen) que NO tiene fila en el maestro para esa aseguradora
+      - (Opcional) CUITs ambiguos por duplicado de Vigente (no utilizado en esta versión)
     """
     mapeo = _leer_mapeo_aseguradoras(MAPEO_ASEG_PATH)
-    deudas = _cargar_deudas(periodo, mapeo)  # ya 1xCUIT
+    deudas = _cargar_deudas(periodo, mapeo)  # ahora varias filas por CUIT (una por aseguradora_origen)
 
     maestro = _cargar_maestro_raw(MAESTRO_PATH)
     is_blank = maestro[M_CUENTA_PERDIDA].isna() | (maestro[M_CUENTA_PERDIDA].astype(str).str.strip() == "")
     maestro["_blank"] = is_blank
-    counts_blank = maestro.groupby(M_CUIT)["_blank"].sum()
-    cuits_ambig = set(counts_blank[counts_blank > 1].index)
+    maestro["Vigente"] = maestro["_blank"]
 
-    # Maestro 1xCUIT (mismas reglas que en consolidado)
-    maestro_sorted = maestro.sort_values([M_CUIT, "_blank"], ascending=[True, False])
-    maestro_1a1 = maestro_sorted.drop_duplicates(M_CUIT, keep="first")
-    maestro_1a1 = maestro_1a1[~maestro_1a1[M_CUIT].isin(cuits_ambig)]
-    cuits_ok = set(maestro_1a1[M_CUIT])
+    maestro["_ASEG_n"] = _norm_aseg_str(maestro[M_ASEGURADORA])
+    deudas["_ASEG_ORIGEN_n"] = _norm_aseg_str(deudas["aseguradora_origen"])
 
-    # Sin maestro o ambiguos
-    mask = (~deudas["cuit"].isin(cuits_ok)) | (deudas["cuit"].isin(cuits_ambig))
-    df_nc = deudas[mask].copy()
+    maestro_sorted = maestro.sort_values([M_CUIT, "_ASEG_n", "Vigente"], ascending=[True, True, False])
+    maestro_compacto = maestro_sorted.drop_duplicates([M_CUIT, "_ASEG_n"], keep="first")
 
-    # Columnas de salida (campos de maestro vacíos)
+    merged = deudas.merge(
+        maestro_compacto,
+        how="left",
+        left_on=["cuit", "_ASEG_ORIGEN_n"],
+        right_on=[M_CUIT, "_ASEG_n"],
+        suffixes=("", "_m"),
+    )
+
+    # Los que NO cruzan por (CUIT, Aseg)
+    df_nc = merged[merged["_ASEG_n"].isna()].copy()
+
+    # Columnas de salida
     df_nc["Periodo"]             = _norm_periodo(periodo)
     df_nc["Razón social"]        = pd.NA
     df_nc["CUIT"]                = df_nc["cuit"]
     df_nc["Contrato"]            = pd.NA
-    df_nc["Aseguradora"]         = pd.NA
+    # Aseguradora: informamos la de ORIGEN (deuda), que es la que falló el cruce
+    df_nc["Aseguradora"]         = df_nc["aseguradora_origen"]
     df_nc["Deuda total"]         = _to_number_ar_series(df_nc["deuda_total"], decimals=2)
     df_nc["Costo mensual"]       = pd.NA
     df_nc["Q periodos deudores"] = pd.NA
     df_nc["Estado contrato"]     = pd.NA
     df_nc["Email del trato"]     = pd.NA
     df_nc["No contactar"]        = pd.NA
-    df_nc["Productor"]           = "PROMECOR"
+    df_nc["Productor"]           = pd.NA
     df_nc["Premier"]             = pd.NA
     df_nc["Cliente importante"]  = pd.NA
 
-    return df_nc[COLUMNS_ORDER].copy()
+    out = df_nc[COLUMNS_ORDER].copy()
+    return out
 
 
 # ------------------------------------------------------------------#
