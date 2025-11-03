@@ -1,0 +1,59 @@
+table dim_contacts
+	lineageTag: a3508872-ee79-413f-928d-d5f88cf4b026
+
+	column zoho_id
+		dataType: string
+		lineageTag: f69675aa-e4f8-4f6d-86ec-774a0b5f8c2c
+		summarizeBy: none
+		sourceColumn: zoho_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column full_name
+		dataType: string
+		lineageTag: 331e4281-5488-495a-8596-da43aec84537
+		summarizeBy: none
+		sourceColumn: full_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column email
+		dataType: string
+		lineageTag: 7596a402-d513-4539-8eda-afc3715f60f8
+		summarizeBy: none
+		sourceColumn: email
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_contacts = m
+		mode: import
+		queryGroup: 02_Dimensiones
+		source =
+				let
+				    Source = #"stg_crm_contacts",
+				
+				    // Quedarme solo con los atributos de contacto
+				    Keep = Table.SelectColumns(Source, {"zoho_id","full_name","email"}, MissingField.UseNull),
+				
+				    // Limpieza y formatos
+				    Clean = Table.TransformColumns(
+				        Keep,
+				        {
+				            {"zoho_id",   each Text.Trim(Text.From(_)), type text},
+				            {"full_name", each if _ is text then Text.Trim(_) else _, type any},
+				            {"email",     each if _ is text then Text.Lower(Text.Trim(_)) else _, type any}
+				        }
+				    ),
+				
+				    // Al deduplicar por zoho_id, priorizo las filas que tengan email
+				    EmailRank = Table.AddColumn(Clean, "email_rank", each if [email] = null or Text.Trim(Text.From([email])) = "" then 0 else 1, Int64.Type),
+				    SortForDedup = Table.Sort(EmailRank, {{"zoho_id", Order.Ascending}, {"email_rank", Order.Descending}}),
+				    Dedup = Table.Distinct(SortForDedup, {"zoho_id"}),
+				    Final = Table.RemoveColumns(Dedup, {"email_rank"})
+				in
+				    Final
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,152 @@
+relationship 79f94261-8cc1-4c76-b34e-6387b2e327e8
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.inicio_de_vigencia
+	toColumn: LocalDateTable_cee38ba3-f2a0-418a-8998-112734cfc72a.Date
+
+relationship 206ede8a-72f1-4904-b631-a90c73c104b8
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fin_de_vigencia
+	toColumn: LocalDateTable_6a5bce45-a905-4a03-a9fe-5e13f7683b89.Date
+
+relationship 2769a92f-6314-4a8c-b1a2-0ce2815eff30
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_real_apertura_de_deal
+	toColumn: LocalDateTable_7b0a1cf8-53df-4aac-b614-1976ce4120b6.Date
+
+relationship bc763a0a-ab9c-489c-8d17-0f881f2797e6
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_real_cierre_deal
+	toColumn: LocalDateTable_71757635-ba98-4f50-8ffe-3f252c3bb5ef.Date
+
+relationship 2e1d28aa-3a1f-2f2b-45b4-e88a16de7d47
+	fromColumn: fact_art.contrato
+	toColumn: dim_deals.contrato
+
+relationship 34569178-645b-9a15-efc5-069fd3591849
+	fromColumn: dim_deals.account_fk
+	toColumn: dim_accounts.zoho_id
+
+relationship ec8b42b3-1ea3-9d36-159e-75b7103f6b9f
+	fromColumn: dim_deals.contact_fk
+	toColumn: dim_contacts.zoho_id
+
+relationship a0689464-b585-8c26-968e-79930f7f7ac0
+	fromColumn: fact_art.periodo_date
+	toColumn: dim_date.Fecha
+
+relationship 726c1224-88d1-4306-8924-f11794b2bc91
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_de_traspaso
+	toColumn: LocalDateTable_49792b6a-613b-4f89-afe1-f5f42f3db649.Date
+
+relationship e7198479-ca41-452b-ae9e-8b8233b5b3e2
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_anulaci_n
+	toColumn: LocalDateTable_45da2b26-2437-4504-95a5-7098d6a8f729.Date
+
+relationship a48cc300-c6db-44d4-bb0d-356b1701da29
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.inicio_de_vigencia
+	toColumn: LocalDateTable_65f5d118-057e-4f3c-b947-ba8b5e0412ea.Date
+
+relationship f1dcb6cb-159b-4650-9b35-6ba681844d9b
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fin_de_vigencia
+	toColumn: LocalDateTable_85733f9b-2523-49b2-8b9c-a2a190269ed9.Date
+
+relationship 93fbb2b1-229a-4d06-adb4-dac327d85c92
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_real_apertura_de_deal
+	toColumn: LocalDateTable_f914e59e-2649-493b-b0cd-83549cad5c8c.Date
+
+relationship 23d92429-06b6-46f4-b727-4c56b56e9a62
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_de_traspaso
+	toColumn: LocalDateTable_838f0de8-f276-4773-9d5f-a339f96a8244.Date
+
+relationship aed920e1-28f3-49b0-bf3b-cb7a1f81cecf
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_traspaso_interno
+	toColumn: LocalDateTable_39647060-ec0a-4b67-9e57-601a34a3059f.Date
+
+relationship 6e0f5f37-28b4-4c66-a073-aa39f7baa611
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_de_designaci_n
+	toColumn: LocalDateTable_05649000-da61-4167-91bb-7dae6fd2834d.Date
+
+relationship 9a052723-9322-4839-9ee9-4aa196250728
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_de_rescici_n_por_pago
+	toColumn: LocalDateTable_1d5b6cf3-195b-41b8-b0f5-eba48ac350ff.Date
+
+relationship c0e73c6c-7695-4905-aff6-483c1d7b0f65
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_anulaci_n
+	toColumn: LocalDateTable_39db329e-2b96-45aa-8da0-22c0dedc9199.Date
+
+relationship 3425379b-5ccf-4058-87bc-7046023bfba5
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals_hist.fecha_anulacion_final
+	toColumn: LocalDateTable_9087502a-c579-465d-9cc3-1a2c20e97e0c.Date
+
+relationship 2c007beb-5183-493a-a9b9-c254465c09b1
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_traspaso_interno
+	toColumn: LocalDateTable_c5327593-b842-41c6-9152-996730072421.Date
+
+relationship 1e3739fe-57ce-4f9d-afe7-2a18fa927ba3
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_de_designaci_n
+	toColumn: LocalDateTable_25c6df09-bb24-4382-8660-ad598986ed87.Date
+
+relationship efd3c8af-a483-4179-8732-250f79f05788
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_de_rescici_n_por_pago
+	toColumn: LocalDateTable_635c5558-26a9-44c4-9444-32809fd9cb35.Date
+
+relationship 226c36c8-c272-4935-95bd-d3ffe2cdefc2
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_orden
+	toColumn: LocalDateTable_e5c893a8-ab65-4d66-99a4-85cacce628e3.Date
+
+relationship 3db74bb5-2837-4079-b6db-b45b3a938c33
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.fecha_anulacion_final
+	toColumn: LocalDateTable_0ce9abea-255e-47ca-986e-0dd83fea8f18.Date
+
+relationship 4d826bf7-0b23-47a9-ae4c-ebde4837ba4a
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_deals.periodo_anulacion
+	toColumn: LocalDateTable_e98cc25e-b5ed-4c1f-8de4-eb21f0e0bda0.Date
+
+relationship bbcf21f8-0865-bede-80ca-f98a2230c3b4
+	fromColumn: dim_deals_hist.periodo_anulacion
+	toColumn: dim_date.Fecha
+
+relationship b0f9a39f-ad4a-eaa2-6360-06a4b9b7dda3
+	fromColumn: dim_deals_hist.account_fk
+	toColumn: dim_accounts.zoho_id
+
+relationship b5090256-b60c-8a31-35c2-a32e17b5979e
+	fromColumn: dim_deals.aseguradora_enviada_lookup
+	toColumn: dim_aseguradoras.aseguradora
+
+relationship d914d136-e237-51f4-2d1d-c65ebfdb5a6d
+	fromColumn: dim_deals_hist.aseguradora_enviada_lookup
+	toColumn: dim_aseguradoras.aseguradora
+
+relationship e9666d87-39d3-4f85-a17c-2c220833416e
+	joinOnDateBehavior: datePartOnly
+	fromColumn: QA_Control_CRM.max_created_utc
+	toColumn: LocalDateTable_fcb29007-0644-4fb0-af9b-a2d75bd3eb6e.Date
+
+relationship d2a5408d-8502-42e6-89a9-509453410901
+	joinOnDateBehavior: datePartOnly
+	fromColumn: QA_Control_CRM.max_modified_utc
+	toColumn: LocalDateTable_76bb7131-aacd-4f84-a83b-a75dbb2c9dbd.Date
+
+relationship e9248ec5-60f7-4474-88bf-2b245cd50b82
+	joinOnDateBehavior: datePartOnly
+	fromColumn: QA_Control_CRM.max_modified_ar
+	toColumn: LocalDateTable_88f1f22e-c20d-4db5-90cd-f7a4d54ad543.Date
+

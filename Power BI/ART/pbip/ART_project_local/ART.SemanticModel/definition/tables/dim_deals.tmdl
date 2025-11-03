@@ -1,0 +1,426 @@
+table dim_deals
+	lineageTag: c82d8b05-f52b-4333-b27f-0746dcda82b6
+
+	column numero_de_contrato
+		dataType: string
+		lineageTag: 704ccc8c-5da3-48fa-aab1-2fdd20a2a649
+		summarizeBy: none
+		sourceColumn: numero_de_contrato
+
+		annotation SummarizationSetBy = Automatic
+
+	column contrato
+		dataType: string
+		lineageTag: a577f363-f0ef-4df3-b89a-98e626b8732b
+		summarizeBy: none
+		sourceColumn: contrato
+
+		annotation SummarizationSetBy = Automatic
+
+	column zoho_id
+		dataType: string
+		lineageTag: 86aa55e6-9b9f-474d-8ac2-4ef4b4e6bdcb
+		summarizeBy: none
+		sourceColumn: zoho_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column stage
+		dataType: string
+		lineageTag: 7942b165-0770-4441-a8f9-07d3d5b67a2f
+		summarizeBy: none
+		sourceColumn: stage
+
+		annotation SummarizationSetBy = Automatic
+
+	column inicio_de_vigencia
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f68d0b29-8107-4b78-a81e-8792fc345d39
+		summarizeBy: none
+		sourceColumn: inicio_de_vigencia
+
+		variation Variación
+			isDefault
+			relationship: 79f94261-8cc1-4c76-b34e-6387b2e327e8
+			defaultHierarchy: LocalDateTable_cee38ba3-f2a0-418a-8998-112734cfc72a.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fin_de_vigencia
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: fc78936a-3cb8-4902-af86-231fa73a01db
+		summarizeBy: none
+		sourceColumn: fin_de_vigencia
+
+		variation Variación
+			isDefault
+			relationship: 206ede8a-72f1-4904-b631-a90c73c104b8
+			defaultHierarchy: LocalDateTable_6a5bce45-a905-4a03-a9fe-5e13f7683b89.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_real_apertura_de_deal
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: dde0a413-d93a-40e7-ae1d-d456700a1622
+		summarizeBy: none
+		sourceColumn: fecha_real_apertura_de_deal
+
+		variation Variación
+			isDefault
+			relationship: 2769a92f-6314-4a8c-b1a2-0ce2815eff30
+			defaultHierarchy: LocalDateTable_7b0a1cf8-53df-4aac-b614-1976ce4120b6.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+	column fecha_real_cierre_deal
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 03d1858b-8bed-41fe-9a38-31a79855b37a
+		summarizeBy: none
+		sourceColumn: fecha_real_cierre_deal
+
+		variation Variación
+			isDefault
+			relationship: bc763a0a-ab9c-489c-8d17-0f881f2797e6
+			defaultHierarchy: LocalDateTable_71757635-ba98-4f50-8ffe-3f252c3bb5ef.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+	column tipo_de_deal
+		dataType: string
+		lineageTag: 28bd19c0-d658-48c6-86de-afab0b6c8042
+		summarizeBy: none
+		sourceColumn: tipo_de_deal
+
+		annotation SummarizationSetBy = Automatic
+
+	column motivo
+		dataType: string
+		lineageTag: 9bf8b5b9-f39c-433e-8a07-e875d8387b4a
+		summarizeBy: none
+		sourceColumn: motivo
+
+		annotation SummarizationSetBy = Automatic
+
+	column motivo_endoso
+		dataType: string
+		lineageTag: 33e680f7-9c3c-45d0-a9f6-9be45131ec87
+		summarizeBy: none
+		sourceColumn: motivo_endoso
+
+		annotation SummarizationSetBy = Automatic
+
+	column moneda
+		dataType: string
+		lineageTag: 96861abe-5d61-45de-a8ec-852b3a25835c
+		summarizeBy: none
+		sourceColumn: moneda
+
+		annotation SummarizationSetBy = Automatic
+
+	column renueva_poliza
+		dataType: string
+		lineageTag: d365ccd6-2696-4805-b870-3d2792aad8bb
+		summarizeBy: none
+		sourceColumn: renueva_poliza
+
+		annotation SummarizationSetBy = Automatic
+
+	column canal_comercial
+		dataType: string
+		lineageTag: b7f2c985-00a4-45c0-8640-cb77c64d2f0b
+		summarizeBy: none
+		sourceColumn: canal_comercial
+
+		annotation SummarizationSetBy = Automatic
+
+	column m_todo_de_pago
+		dataType: string
+		lineageTag: 94132893-c7a8-4c68-9dbf-e5632c2785f9
+		summarizeBy: none
+		sourceColumn: m_todo_de_pago
+
+		annotation SummarizationSetBy = Automatic
+
+	column aseguradora_enviada_lookup
+		dataType: string
+		lineageTag: ad601b7e-3ac0-4899-8140-0068cd9b1065
+		summarizeBy: none
+		sourceColumn: aseguradora_enviada_lookup
+
+		annotation SummarizationSetBy = Automatic
+
+	column ramo
+		dataType: string
+		lineageTag: 4dcb8c7e-9c8d-4a3f-8ec8-d7d5c43d2ee1
+		summarizeBy: none
+		sourceColumn: ramo
+
+		annotation SummarizationSetBy = Automatic
+
+	column account_fk
+		dataType: string
+		lineageTag: e1b637e9-a65f-4b27-a2b3-a35733aaf82f
+		summarizeBy: none
+		sourceColumn: account_fk
+
+		annotation SummarizationSetBy = Automatic
+
+	column contact_fk
+		dataType: string
+		lineageTag: b51a10af-d906-42ed-b380-794c498f1f54
+		summarizeBy: none
+		sourceColumn: contact_fk
+
+		annotation SummarizationSetBy = Automatic
+
+	column account_id
+		dataType: string
+		lineageTag: 2e8f1940-b10c-443d-8c04-55e36345da6f
+		summarizeBy: none
+		sourceColumn: account_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column account_name
+		dataType: string
+		lineageTag: e859e685-1921-4c8b-8a37-d3ecbc403385
+		summarizeBy: none
+		sourceColumn: account_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column contact_name
+		dataType: string
+		lineageTag: 17590a4b-b8be-4846-80ce-7b669cb2cc7c
+		summarizeBy: none
+		sourceColumn: contact_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column contact_name_id
+		dataType: string
+		lineageTag: d428eca1-b2a9-41af-9e64-b2129183fc2e
+		summarizeBy: none
+		sourceColumn: contact_name_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column fecha_de_traspaso
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 252d3070-147d-4499-b3d5-b3ba7d0d4345
+		summarizeBy: none
+		sourceColumn: fecha_de_traspaso
+
+		variation Variación
+			isDefault
+			relationship: 726c1224-88d1-4306-8924-f11794b2bc91
+			defaultHierarchy: LocalDateTable_49792b6a-613b-4f89-afe1-f5f42f3db649.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column cuenta_perdida
+		dataType: string
+		lineageTag: ff69cfed-eb6f-4bbe-aa44-2cbac9f47e47
+		summarizeBy: none
+		sourceColumn: cuenta_perdida
+
+		annotation SummarizationSetBy = Automatic
+
+	column segmentaci_n_clientes1
+		dataType: string
+		lineageTag: 904403dd-7ae8-4e43-93ba-ecd60d0ecb71
+		summarizeBy: none
+		sourceColumn: segmentaci_n_clientes1
+
+		annotation SummarizationSetBy = Automatic
+
+	column aseguradora_propuesta
+		dataType: string
+		lineageTag: ec0319fe-8e3f-4d34-a82d-82b21eeb58a7
+		summarizeBy: none
+		sourceColumn: aseguradora_propuesta
+
+		annotation SummarizationSetBy = Automatic
+
+	column premio_total
+		dataType: double
+		lineageTag: d91a5d9b-2509-4159-a734-050f1234eea5
+		summarizeBy: sum
+		sourceColumn: premio_total
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column fecha_anulaci_n
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 2922b6e3-0146-4ed2-8464-0ab2e54d0f29
+		summarizeBy: none
+		sourceColumn: fecha_anulaci_n
+
+		variation Variación
+			isDefault
+			relationship: e7198479-ca41-452b-ae9e-8b8233b5b3e2
+			defaultHierarchy: LocalDateTable_45da2b26-2437-4504-95a5-7098d6a8f729.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column account_fk_source
+		dataType: string
+		lineageTag: 5f01d22e-78ff-4c10-af63-2ea07ef2fe7f
+		summarizeBy: none
+		sourceColumn: account_fk_source
+
+		annotation SummarizationSetBy = Automatic
+
+	column contact_fk_source
+		dataType: string
+		lineageTag: 4b000598-33c5-4fea-b504-2fa6a6caecdd
+		summarizeBy: none
+		sourceColumn: contact_fk_source
+
+		annotation SummarizationSetBy = Automatic
+
+	column fecha_traspaso_interno
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 36d5ee9b-864b-4f17-a730-f1dab8239bc7
+		summarizeBy: none
+		sourceColumn: fecha_traspaso_interno
+
+		variation Variación
+			isDefault
+			relationship: 2c007beb-5183-493a-a9b9-c254465c09b1
+			defaultHierarchy: LocalDateTable_c5327593-b842-41c6-9152-996730072421.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_de_designaci_n
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: b38fbca6-5fe9-4703-94e1-89debf2db65d
+		summarizeBy: none
+		sourceColumn: fecha_de_designaci_n
+
+		variation Variación
+			isDefault
+			relationship: 1e3739fe-57ce-4f9d-afe7-2a18fa927ba3
+			defaultHierarchy: LocalDateTable_25c6df09-bb24-4382-8660-ad598986ed87.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_de_rescici_n_por_pago
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 3b8c4e5c-33b1-4331-8d73-ac99ef7291e0
+		summarizeBy: none
+		sourceColumn: fecha_de_rescici_n_por_pago
+
+		variation Variación
+			isDefault
+			relationship: efd3c8af-a483-4179-8732-250f79f05788
+			defaultHierarchy: LocalDateTable_635c5558-26a9-44c4-9444-32809fd9cb35.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_orden
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: f79b899a-0ed6-4c0e-8262-27a429f00f58
+		summarizeBy: none
+		sourceColumn: fecha_orden
+
+		variation Variación
+			isDefault
+			relationship: 226c36c8-c272-4935-95bd-d3ffe2cdefc2
+			defaultHierarchy: LocalDateTable_e5c893a8-ab65-4d66-99a4-85cacce628e3.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+	column fecha_anulacion_final
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f058ca48-92fa-4066-b32d-2fbb59ac9b55
+		summarizeBy: none
+		sourceColumn: fecha_anulacion_final
+
+		variation Variación
+			isDefault
+			relationship: 3db74bb5-2837-4079-b6db-b45b3a938c33
+			defaultHierarchy: LocalDateTable_0ce9abea-255e-47ca-986e-0dd83fea8f18.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column periodo_anulacion
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: cc64df30-1f54-42c2-9ad6-f842a9e7c158
+		summarizeBy: none
+		sourceColumn: periodo_anulacion
+
+		variation Variación
+			isDefault
+			relationship: 4d826bf7-0b23-47a9-ae4c-ebde4837ba4a
+			defaultHierarchy: LocalDateTable_e98cc25e-b5ed-4c1f-8de4-eb21f0e0bda0.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition dim_deals = m
+		mode: import
+		queryGroup: 02_Dimensiones
+		source =
+				let
+				    Source = stg_crm_deals_all,
+				
+				    // Alias de contrato (si ya existe, no lo duplico)
+				    AddAliasContrato =
+				        if List.Contains(Table.ColumnNames(Source), "contrato") then
+				            Source
+				        else
+				            Table.AddColumn(Source, "contrato", each [numero_de_contrato], type text),
+				
+				    // Quiero dejar "contrato" inmediatamente después de "numero_de_contrato"
+				    AllCols0 = Table.ColumnNames(AddAliasContrato),
+				    Pos = List.PositionOf(AllCols0, "numero_de_contrato"),
+				    AllCols =
+				        if Pos <> -1 then
+				            List.InsertRange(List.RemoveItems(AllCols0, {"contrato"}), Pos + 1, {"contrato"})
+				        else
+				            AllCols0,
+				
+				    // Dedup por contrato (mantiene el esquema completo)
+				    Dedup = Table.Distinct(AddAliasContrato, {"numero_de_contrato"}),
+				
+				    // Reorden sin perder ninguna columna del stg
+				    Reorder = Table.ReorderColumns(Dedup, AllCols, MissingField.Ignore)
+				in
+				    Reorder
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

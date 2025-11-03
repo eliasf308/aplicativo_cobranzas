@@ -1,0 +1,33 @@
+table dim_aseguradoras
+	lineageTag: 761edc70-3973-4277-a8f8-888c83e0227f
+
+	column aseguradora
+		dataType: string
+		lineageTag: e1d23de2-dc2a-4d4c-bad5-50a65709bfa7
+		summarizeBy: none
+		sourceColumn: aseguradora
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_aseguradoras = m
+		mode: import
+		queryGroup: 02_Dimensiones
+		source =
+				let
+				    A = Table.Distinct( Table.SelectColumns(#"dim_deals", {"aseguradora_enviada_lookup"}) ),
+				    B = Table.Distinct( Table.SelectColumns(#"dim_deals_hist", {"aseguradora_enviada_lookup"}) ),
+				    U = Table.Combine({A, B}),
+				    Clean = Table.TransformColumns(
+				        U, {{"aseguradora_enviada_lookup", each Text.Proper(Text.Trim(Text.From(_))), type text}}
+				    ),
+				    ReplaceNull = Table.ReplaceValue(Clean, null, "Sin dato", Replacer.ReplaceValue, {"aseguradora_enviada_lookup"}),
+				    ReplaceEmpty = Table.ReplaceValue(ReplaceNull, "", "Sin dato", Replacer.ReplaceValue, {"aseguradora_enviada_lookup"}),
+				    Dist = Table.Distinct(ReplaceEmpty),
+				    Ren = Table.RenameColumns(Dist, {{"aseguradora_enviada_lookup","aseguradora"}})
+				in
+				    Ren
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

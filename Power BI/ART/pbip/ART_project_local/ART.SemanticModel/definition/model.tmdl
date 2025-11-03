@@ -1,0 +1,71 @@
+model Model
+	culture: es-ES
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: es-AR
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+queryGroup 00_Origen
+
+	annotation PBI_QueryGroupOrder = 0
+
+queryGroup 01_Staging
+
+	annotation PBI_QueryGroupOrder = 1
+
+queryGroup 02_Dimensiones
+
+	annotation PBI_QueryGroupOrder = 2
+
+queryGroup 03_Hechos
+
+	annotation PBI_QueryGroupOrder = 3
+
+queryGroup QA
+
+	annotation PBI_QueryGroupOrder = 4
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["public crm_accounts","public crm_deals","public crm_contacts","public art_artdashboardcontratoperiodo","stg_art_artdashboardcontratoperiodo","stg_crm_deals_all","stg_crm_accounts","stg_crm_contacts","QA_Duplicados_deals","dim_deals","dim_accounts","dim_contacts","fact_art","dim_date","⚙ Medidas","dim_deals_hist","dim_aseguradoras","QA_Control_CRM"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table dim_deals
+ref table DateTableTemplate_dc970129-f98c-40bd-b9ca-4938a7182c68
+ref table LocalDateTable_cee38ba3-f2a0-418a-8998-112734cfc72a
+ref table LocalDateTable_6a5bce45-a905-4a03-a9fe-5e13f7683b89
+ref table LocalDateTable_7b0a1cf8-53df-4aac-b614-1976ce4120b6
+ref table LocalDateTable_71757635-ba98-4f50-8ffe-3f252c3bb5ef
+ref table dim_accounts
+ref table dim_contacts
+ref table fact_art
+ref table dim_date
+ref table '⚙ Medidas'
+ref table LocalDateTable_49792b6a-613b-4f89-afe1-f5f42f3db649
+ref table LocalDateTable_45da2b26-2437-4504-95a5-7098d6a8f729
+ref table dim_deals_hist
+ref table LocalDateTable_65f5d118-057e-4f3c-b947-ba8b5e0412ea
+ref table LocalDateTable_85733f9b-2523-49b2-8b9c-a2a190269ed9
+ref table LocalDateTable_f914e59e-2649-493b-b0cd-83549cad5c8c
+ref table LocalDateTable_838f0de8-f276-4773-9d5f-a339f96a8244
+ref table LocalDateTable_39647060-ec0a-4b67-9e57-601a34a3059f
+ref table LocalDateTable_05649000-da61-4167-91bb-7dae6fd2834d
+ref table LocalDateTable_1d5b6cf3-195b-41b8-b0f5-eba48ac350ff
+ref table LocalDateTable_39db329e-2b96-45aa-8da0-22c0dedc9199
+ref table LocalDateTable_9087502a-c579-465d-9cc3-1a2c20e97e0c
+ref table LocalDateTable_c5327593-b842-41c6-9152-996730072421
+ref table LocalDateTable_25c6df09-bb24-4382-8660-ad598986ed87
+ref table LocalDateTable_635c5558-26a9-44c4-9444-32809fd9cb35
+ref table LocalDateTable_e5c893a8-ab65-4d66-99a4-85cacce628e3
+ref table LocalDateTable_0ce9abea-255e-47ca-986e-0dd83fea8f18
+ref table LocalDateTable_e98cc25e-b5ed-4c1f-8de4-eb21f0e0bda0
+ref table dim_aseguradoras
+ref table QA_Control_CRM
+ref table LocalDateTable_fcb29007-0644-4fb0-af9b-a2d75bd3eb6e
+ref table LocalDateTable_76bb7131-aacd-4f84-a83b-a75dbb2c9dbd
+ref table LocalDateTable_88f1f22e-c20d-4db5-90cd-f7a4d54ad543
+
+ref cultureInfo es-ES
+

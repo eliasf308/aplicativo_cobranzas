@@ -1,0 +1,231 @@
+table dim_accounts
+	lineageTag: d09a3936-2b8c-4fea-ada6-3f9c7188fd7c
+
+	column zoho_id
+		dataType: string
+		lineageTag: f23d4110-ddba-47a4-8f61-69fc2b3d2cae
+		summarizeBy: none
+		sourceColumn: zoho_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column account_name
+		dataType: string
+		lineageTag: e0d9748b-e5a8-4fb9-baeb-db53e43987d6
+		summarizeBy: none
+		sourceColumn: account_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column CUIT_norm
+		dataType: string
+		lineageTag: 0df89689-cf3d-4a8e-844c-8a4efd0ced3a
+		summarizeBy: none
+		sourceColumn: CUIT_norm
+
+		annotation SummarizationSetBy = Automatic
+
+	column cuil
+		dataType: string
+		lineageTag: 84050b43-5671-40ff-88db-c2d5c16190e4
+		summarizeBy: none
+		sourceColumn: cuil
+
+		annotation SummarizationSetBy = Automatic
+
+	column c_digo_de_actividad
+		dataType: string
+		lineageTag: 160008a0-5cfe-4913-b885-0d31c71e2317
+		summarizeBy: none
+		sourceColumn: c_digo_de_actividad
+
+		annotation SummarizationSetBy = Automatic
+
+	column alicuota_vigente
+		dataType: double
+		lineageTag: 39e2e4e8-13a3-4b38-a8df-439389113495
+		summarizeBy: sum
+		sourceColumn: alicuota_vigente
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column alicuota_srt
+		dataType: double
+		lineageTag: da43d3f6-b346-4961-aba4-7d0941f5a9fb
+		summarizeBy: sum
+		sourceColumn: alicuota_srt
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column aporte_lrt
+		dataType: double
+		lineageTag: f643cf21-01cd-44e9-b3fe-5333146cd7de
+		summarizeBy: sum
+		sourceColumn: aporte_lrt
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column costo_mensual
+		dataType: double
+		lineageTag: 589d7ec0-c215-4ab9-a4b0-6f61890292b6
+		summarizeBy: sum
+		sourceColumn: costo_mensual
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column provincia_2
+		dataType: string
+		lineageTag: 58264c61-a6b7-4f3d-b989-bc235318f91d
+		summarizeBy: none
+		sourceColumn: provincia_2
+
+		annotation SummarizationSetBy = Automatic
+
+	column grupo_economico_name
+		dataType: string
+		lineageTag: a01a8d3e-3404-4791-bccf-c9143c014f13
+		summarizeBy: none
+		sourceColumn: grupo_economico_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column dom_stica
+		dataType: string
+		lineageTag: 4b9fd8d4-00b5-4510-834c-19e72f1905e1
+		summarizeBy: none
+		sourceColumn: dom_stica
+
+		annotation SummarizationSetBy = Automatic
+
+	column broker
+		dataType: string
+		lineageTag: 136c3991-0cb2-49ea-ae98-2ea7762abc0b
+		summarizeBy: none
+		sourceColumn: broker
+
+		annotation SummarizationSetBy = Automatic
+
+	column tipo_de_iva
+		dataType: string
+		lineageTag: 78868857-02a0-4f43-a310-08ed5ce944c5
+		summarizeBy: none
+		sourceColumn: tipo_de_iva
+
+		annotation SummarizationSetBy = Automatic
+
+	column tipo_de_persona
+		dataType: string
+		lineageTag: d70bd343-7b18-4fdc-b747-57c5ef325daf
+		summarizeBy: none
+		sourceColumn: tipo_de_persona
+
+		annotation SummarizationSetBy = Automatic
+
+	column ejecutivo_customer_service_name
+		dataType: string
+		lineageTag: 16f62cba-2003-4f9f-ad4b-0f75c6af9ddd
+		summarizeBy: none
+		sourceColumn: ejecutivo_customer_service_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column ejecutivo_comercial
+		dataType: string
+		lineageTag: c54d4b41-1584-4639-a07b-c8658606d994
+		summarizeBy: none
+		sourceColumn: ejecutivo_comercial
+
+		annotation SummarizationSetBy = Automatic
+
+	column cliente_importante
+		dataType: string
+		lineageTag: 9a553883-b281-452c-9830-be90ba839b1b
+		summarizeBy: none
+		sourceColumn: cliente_importante
+
+		annotation SummarizationSetBy = Automatic
+
+	column referido_por_name
+		dataType: string
+		lineageTag: 38f25369-2a61-4bed-a581-2b3e73750655
+		summarizeBy: none
+		sourceColumn: referido_por_name
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_accounts = m
+		mode: import
+		queryGroup: 02_Dimensiones
+		source =
+				let
+				    Source = #"stg_crm_accounts",
+				
+				    // Mantengo todas las columnas útiles para atributos de la cuenta
+				    Keep = Table.SelectColumns(
+				        Source,
+				        {
+				            "zoho_id","account_name","CUIT_norm","cuil","c_digo_de_actividad",
+				            "alicuota_vigente","referido_por_name","provincia_2","grupo_economico_name",
+				            "dom_stica","costo_mensual","broker","alicuota_srt","tipo_de_iva",
+				            "tipo_de_persona","ejecutivo_customer_service_name","cliente_importante",
+				            "ejecutivo_comercial","aporte_lrt"
+				        },
+				        MissingField.UseNull
+				    ),
+				
+				    // Tipos de datos (por si acaso)
+				    Typed = Table.TransformColumnTypes(
+				        Keep,
+				        {
+				            {"zoho_id", type text},
+				            {"account_name", type text},
+				            {"CUIT_norm", type text},
+				            {"cuil", type text},
+				            {"c_digo_de_actividad", type text},
+				            {"referido_por_name", type text},
+				            {"provincia_2", type text},
+				            {"grupo_economico_name", type text},
+				            {"dom_stica", type text},
+				            {"broker", type text},
+				            {"tipo_de_iva", type text},
+				            {"tipo_de_persona", type text},
+				            {"ejecutivo_customer_service_name", type text},
+				            {"cliente_importante", type text},
+				            {"ejecutivo_comercial", type text},
+				            {"alicuota_vigente", type number},
+				            {"alicuota_srt", type number},
+				            {"costo_mensual", type number},
+				            {"aporte_lrt", type number}
+				        }
+				    ),
+				
+				    // Unicidad por cuenta (PK: zoho_id)
+				    Dedup = Table.Distinct(Typed, {"zoho_id"}),
+				
+				    // Orden prolijo
+				    Reorder = Table.ReorderColumns(
+				        Dedup,
+				        {
+				            "zoho_id","account_name","CUIT_norm","cuil","c_digo_de_actividad",
+				            "alicuota_vigente","alicuota_srt","aporte_lrt","costo_mensual",
+				            "provincia_2","grupo_economico_name","dom_stica","broker",
+				            "tipo_de_iva","tipo_de_persona","ejecutivo_customer_service_name",
+				            "ejecutivo_comercial","cliente_importante","referido_por_name"
+				        },
+				        MissingField.Ignore
+				    )
+				in
+				    Reorder
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

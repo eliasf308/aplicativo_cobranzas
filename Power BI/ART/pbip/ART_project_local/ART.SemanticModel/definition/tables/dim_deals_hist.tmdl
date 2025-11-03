@@ -1,0 +1,312 @@
+table dim_deals_hist
+	lineageTag: 446f06d9-eaca-42dd-a401-b5ef50eac8d0
+
+	column zoho_id
+		dataType: string
+		lineageTag: eda0e88d-4d29-4643-8ede-5c02e477b6c8
+		summarizeBy: none
+		sourceColumn: zoho_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column numero_de_contrato
+		dataType: string
+		lineageTag: 871b380c-61c0-4087-b76c-0340013318ec
+		summarizeBy: none
+		sourceColumn: numero_de_contrato
+
+		annotation SummarizationSetBy = Automatic
+
+	column contrato
+		dataType: string
+		lineageTag: 110158f3-0434-4d75-885b-0092262ca3f0
+		summarizeBy: none
+		sourceColumn: contrato
+
+		annotation SummarizationSetBy = Automatic
+
+	column account_fk
+		dataType: string
+		lineageTag: 34d24386-6746-44f9-8c40-af3902e77c37
+		summarizeBy: none
+		sourceColumn: account_fk
+
+		annotation SummarizationSetBy = Automatic
+
+	column account_name
+		dataType: string
+		lineageTag: 20f4fad8-2c2e-45a0-b878-2cb0876159e6
+		summarizeBy: none
+		sourceColumn: account_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column contact_fk
+		dataType: string
+		lineageTag: 6caee308-5a0a-44b2-bc6c-1beca26bc98d
+		summarizeBy: none
+		sourceColumn: contact_fk
+
+		annotation SummarizationSetBy = Automatic
+
+	column contact_name
+		dataType: string
+		lineageTag: 05b963e7-8977-4805-8143-dfd12c45d3e4
+		summarizeBy: none
+		sourceColumn: contact_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column aseguradora_enviada_lookup
+		dataType: string
+		lineageTag: c8934660-cb39-4fc7-b18d-4d0b2897be8f
+		summarizeBy: none
+		sourceColumn: aseguradora_enviada_lookup
+
+		annotation SummarizationSetBy = Automatic
+
+	column stage
+		dataType: string
+		lineageTag: 478f6743-de99-4860-9ee3-27df8eec6ea0
+		summarizeBy: none
+		sourceColumn: stage
+
+		annotation SummarizationSetBy = Automatic
+
+	column ramo
+		dataType: string
+		lineageTag: 57deb9e5-2035-4867-8515-67fa5d8edc27
+		summarizeBy: none
+		sourceColumn: ramo
+
+		annotation SummarizationSetBy = Automatic
+
+	column cuenta_perdida
+		dataType: string
+		lineageTag: e81c8b76-b749-4384-80be-cbf2a49bf8df
+		summarizeBy: none
+		sourceColumn: cuenta_perdida
+
+		annotation SummarizationSetBy = Automatic
+
+	column motivo
+		dataType: string
+		lineageTag: 30d5b6df-d52a-4975-a3f8-ffe1748a2107
+		summarizeBy: none
+		sourceColumn: motivo
+
+		annotation SummarizationSetBy = Automatic
+
+	column tipo_de_deal
+		dataType: string
+		lineageTag: c5c8f6f0-7545-448b-b032-e5904ee95c3a
+		summarizeBy: none
+		sourceColumn: tipo_de_deal
+
+		annotation SummarizationSetBy = Automatic
+
+	column inicio_de_vigencia
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: e77f0f8f-514d-4b4f-8bc7-6def998f2837
+		summarizeBy: none
+		sourceColumn: inicio_de_vigencia
+
+		variation Variación
+			isDefault
+			relationship: a48cc300-c6db-44d4-bb0d-356b1701da29
+			defaultHierarchy: LocalDateTable_65f5d118-057e-4f3c-b947-ba8b5e0412ea.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fin_de_vigencia
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 696c3489-1922-412f-a54a-ce91366298e9
+		summarizeBy: none
+		sourceColumn: fin_de_vigencia
+
+		variation Variación
+			isDefault
+			relationship: f1dcb6cb-159b-4650-9b35-6ba681844d9b
+			defaultHierarchy: LocalDateTable_85733f9b-2523-49b2-8b9c-a2a190269ed9.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_real_apertura_de_deal
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 5a74cd9e-b732-4d11-ac93-df503157e1c4
+		summarizeBy: none
+		sourceColumn: fecha_real_apertura_de_deal
+
+		variation Variación
+			isDefault
+			relationship: 93fbb2b1-229a-4d06-adb4-dac327d85c92
+			defaultHierarchy: LocalDateTable_f914e59e-2649-493b-b0cd-83549cad5c8c.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+	column fecha_real_cierre_de_deal
+		dataType: string
+		lineageTag: fe2c98af-8198-4fdf-855b-2dcb5a97ff7e
+		summarizeBy: none
+		sourceColumn: fecha_real_cierre_de_deal
+
+		annotation SummarizationSetBy = Automatic
+
+	column fecha_de_traspaso
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: d6f2ba12-3c2c-49be-b72e-d9309a01bcbe
+		summarizeBy: none
+		sourceColumn: fecha_de_traspaso
+
+		variation Variación
+			isDefault
+			relationship: 23d92429-06b6-46f4-b727-4c56b56e9a62
+			defaultHierarchy: LocalDateTable_838f0de8-f276-4773-9d5f-a339f96a8244.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_traspaso_interno
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 9aaf6681-c4f4-4937-8d9d-b38ec30a280e
+		summarizeBy: none
+		sourceColumn: fecha_traspaso_interno
+
+		variation Variación
+			isDefault
+			relationship: aed920e1-28f3-49b0-bf3b-cb7a1f81cecf
+			defaultHierarchy: LocalDateTable_39647060-ec0a-4b67-9e57-601a34a3059f.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_de_designaci_n
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 0cd3fa66-ade7-4c64-99e5-5ecec2093b2c
+		summarizeBy: none
+		sourceColumn: fecha_de_designaci_n
+
+		variation Variación
+			isDefault
+			relationship: 6e0f5f37-28b4-4c66-a073-aa39f7baa611
+			defaultHierarchy: LocalDateTable_05649000-da61-4167-91bb-7dae6fd2834d.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_de_rescici_n_por_pago
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: de9181b5-c250-48da-b61d-e89fbff781ed
+		summarizeBy: none
+		sourceColumn: fecha_de_rescici_n_por_pago
+
+		variation Variación
+			isDefault
+			relationship: 9a052723-9322-4839-9ee9-4aa196250728
+			defaultHierarchy: LocalDateTable_1d5b6cf3-195b-41b8-b0f5-eba48ac350ff.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_anulaci_n
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f18bf21c-13ea-4f76-9880-358ee2a63e06
+		summarizeBy: none
+		sourceColumn: fecha_anulaci_n
+
+		variation Variación
+			isDefault
+			relationship: c0e73c6c-7695-4905-aff6-483c1d7b0f65
+			defaultHierarchy: LocalDateTable_39db329e-2b96-45aa-8da0-22c0dedc9199.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column fecha_anulacion_final
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 37e28280-16e3-4110-b539-5f09c4d865c2
+		summarizeBy: none
+		sourceColumn: fecha_anulacion_final
+
+		variation Variación
+			isDefault
+			relationship: 3425379b-5ccf-4058-87bc-7046023bfba5
+			defaultHierarchy: LocalDateTable_9087502a-c579-465d-9cc3-1a2c20e97e0c.'Jerarquía de fechas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column periodo_anulacion
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 94556161-add4-4274-b817-62950d28a221
+		summarizeBy: none
+		sourceColumn: periodo_anulacion
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition dim_deals_hist = m
+		mode: import
+		queryGroup: 02_Dimensiones
+		source =
+				let
+				    Source = #"stg_crm_deals_all",
+				
+				    // Mantengo columnas útiles para anulaciones (histórico completo)
+				    Keep = Table.SelectColumns(
+				        Source,
+				        {
+				            "zoho_id","numero_de_contrato","contrato",
+				            "account_fk","account_name","contact_fk","contact_name",
+				            "aseguradora_enviada_lookup","stage","ramo",
+				            "cuenta_perdida","motivo","tipo_de_deal",
+				            "inicio_de_vigencia","fin_de_vigencia",
+				            "fecha_real_apertura_de_deal","fecha_real_cierre_de_deal",
+				            "fecha_de_traspaso","fecha_traspaso_interno",
+				            "fecha_de_designaci_n","fecha_de_rescici_n_por_pago",
+				            "fecha_anulaci_n","fecha_anulacion_final","periodo_anulacion"
+				        },
+				        MissingField.UseNull
+				    ),
+				
+				    // Tipos clave
+				    Typed = Table.TransformColumnTypes(
+				        Keep,
+				        {
+				            {"numero_de_contrato", type text},
+				            {"contrato", type text},
+				            {"cuenta_perdida", type text},
+				            {"aseguradora_enviada_lookup", type text},
+				            {"periodo_anulacion", type date},
+				            {"fecha_anulacion_final", type date},
+				            {"fecha_anulaci_n", type date}
+				        }
+				    )
+				in
+				    Typed
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

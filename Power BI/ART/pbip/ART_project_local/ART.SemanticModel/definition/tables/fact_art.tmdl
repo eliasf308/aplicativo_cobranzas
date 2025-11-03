@@ -1,0 +1,172 @@
+table fact_art
+	lineageTag: a1f1a39c-155a-4654-bd4c-7acdbbe14a5a
+
+	column contrato
+		dataType: string
+		lineageTag: 94e32952-ba28-490d-b791-cbbbb1db2582
+		summarizeBy: none
+		sourceColumn: contrato
+
+		annotation SummarizationSetBy = Automatic
+
+	column periodo_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f7987a05-8a03-43d6-ac3a-5b224e3deea7
+		summarizeBy: none
+		sourceColumn: periodo_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column deuda_total
+		dataType: double
+		lineageTag: 858dfa2d-fa93-4468-9d33-759007b38f61
+		summarizeBy: sum
+		sourceColumn: deuda_total
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CUIT_norm
+		dataType: string
+		lineageTag: 6a149231-61b2-4f3a-856d-0ea5716b144d
+		summarizeBy: none
+		sourceColumn: CUIT_norm
+
+		annotation SummarizationSetBy = Automatic
+
+	column razon_social
+		dataType: string
+		lineageTag: cd7d58fa-f05b-4f84-82ff-eff25aa88cec
+		summarizeBy: none
+		sourceColumn: razon_social
+
+		annotation SummarizationSetBy = Automatic
+
+	column Q_periodos
+		dataType: double
+		lineageTag: 976c2245-36cd-48f0-9304-5e2acdf7e7e7
+		summarizeBy: sum
+		sourceColumn: Q_periodos
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column estado_intimacion
+		dataType: string
+		lineageTag: e3e94819-032f-4fb0-88cf-17f513bd0157
+		summarizeBy: none
+		sourceColumn: estado_intimacion
+
+		annotation SummarizationSetBy = Automatic
+
+	column q_periodos_deudores
+		dataType: double
+		lineageTag: a490c3e6-7e98-4a59-a7f6-371d8d0b097e
+		summarizeBy: sum
+		sourceColumn: q_periodos_deudores
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_art = m
+		mode: import
+		queryGroup: 03_Hechos
+		source =
+				let
+				    Source = #"stg_art_artdashboardcontratoperiodo",
+				
+				    // Traigo la foto histórica (incluye q_periodos_deudores)
+				    Keep = Table.SelectColumns(
+				        Source,
+				        {"periodo","razon_social","cuit","contrato","deuda_total","q_periodos_deudores"},
+				        MissingField.UseNull
+				    ),
+				
+				    // Limpieza / normalización
+				    Clean = Table.TransformColumns(
+				        Keep,
+				        {
+				            {"razon_social", each if _ is text then Text.Trim(_) else _, type any},
+				            {"cuit",         each Text.Trim(Text.From(_)), type text},
+				            {"contrato",     each Text.Upper(Text.Trim(Text.From(_))), type text}
+				        }
+				    ),
+				
+				    // Tipos
+				    Typed = Table.TransformColumnTypes(
+				        Clean,
+				        {
+				            {"deuda_total", type number},
+				            {"q_periodos_deudores", type number}
+				        }
+				    ),
+				
+				    // CUIT normalizado (solo dígitos)
+				    AddCUITNorm = Table.AddColumn(
+				        Typed, "CUIT_norm",
+				        each let x = [cuit] in if x = null or Text.Trim(x) = "" then null else Text.Select(x, {"0".."9"}),
+				        type text
+				    ),
+				
+				    // periodo_date (primer día del mes para strings tipo YYYY-MM / YYYYMM)
+				    AddPeriodoDate = Table.AddColumn(
+				        AddCUITNorm, "periodo_date",
+				        each
+				            let v = [periodo] in
+				            if v is date then v
+				            else if v is datetime then Date.From(v)
+				            else
+				                let s = Text.Trim(Text.From(v)) in
+				                    if Text.Length(s) = 7 and Text.PositionOf(s, "-") = 4 then
+				                        Date.From(s & "-01")
+				                    else if Text.Length(s) = 6 and Value.Is(Number.FromText(s), type number) then
+				                        #date(Number.FromText(Text.Start(s, 4)), Number.FromText(Text.End(s, 2)), 1)
+				                    else try Date.From(s) otherwise null,
+				        type date
+				    ),
+				
+				    // ✅ Unifico a 1 fila por (contrato, periodo_date)
+				    Agg = Table.Group(
+				        AddPeriodoDate,
+				        {"contrato","periodo_date"},
+				        {
+				            {"deuda_total",         each List.Sum(List.RemoveNulls([deuda_total])), type number},
+				            {"razon_social",        each List.First(List.RemoveNulls([razon_social])), type any},
+				            {"q_periodos_deudores", each List.First(List.RemoveNulls([q_periodos_deudores])), type number},
+				            {"CUIT_norm",           each List.First(List.RemoveNulls([CUIT_norm])), type text}
+				        }
+				    ),
+				
+				    // Q_periodos = foto histórica (redondeo 2 decimales)
+				    AddQ = Table.AddColumn(
+				        Agg, "Q_periodos",
+				        each try Number.Round(Number.From([q_periodos_deudores]), 2) otherwise null,
+				        type number
+				    ),
+				
+				    // Estado de intimación según Q_periodos
+				    AddEstado = Table.AddColumn(
+				        AddQ, "estado_intimacion",
+				        each if [Q_periodos] <> null and [Q_periodos] >= 3 then "Intimado" else "No intimado",
+				        type text
+				    ),
+				
+				    // Orden final
+				    Reorder = Table.ReorderColumns(
+				        AddEstado,
+				        {"contrato","periodo_date","deuda_total","q_periodos_deudores","Q_periodos","estado_intimacion","CUIT_norm","razon_social"},
+				        MissingField.Ignore
+				    )
+				in
+				    Reorder
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

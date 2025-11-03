@@ -1,0 +1,192 @@
+table dim_date
+	lineageTag: dfdf9283-afc1-426e-9f68-2f0feaa272ae
+	dataCategory: Time
+
+	column Fecha
+		dataType: dateTime
+		isKey
+		formatString: Long Date
+		lineageTag: 12a78c27-2027-40c9-9d74-d6b8baf8aafa
+		summarizeBy: none
+		sourceColumn: Fecha
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Año
+		dataType: int64
+		formatString: 0
+		lineageTag: 9ba95ee7-1800-4016-ac49-cf4e44d52097
+		summarizeBy: sum
+		sourceColumn: Año
+
+		annotation SummarizationSetBy = Automatic
+
+	column Mes
+		dataType: int64
+		formatString: 0
+		lineageTag: 7caa5c6f-7dac-4024-8ca6-cb8b965c4618
+		summarizeBy: sum
+		sourceColumn: Mes
+
+		annotation SummarizationSetBy = Automatic
+
+	column MesNombre
+		dataType: string
+		lineageTag: cf623ba3-5858-4b24-9a04-4573d10eda61
+		summarizeBy: none
+		sourceColumn: MesNombre
+		sortByColumn: Mes
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column MesAbrev
+		dataType: string
+		lineageTag: 0ae0cb95-04ba-4148-8dcf-66f80785aead
+		summarizeBy: none
+		sourceColumn: MesAbrev
+		sortByColumn: Mes
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column AñoMes
+		dataType: string
+		lineageTag: 40952557-ff05-4083-8772-ff0eb0ca1896
+		summarizeBy: none
+		sourceColumn: AñoMes
+		sortByColumn: InicioMes
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column Trimestre
+		dataType: string
+		lineageTag: 5c28b6e3-ad7c-4ccc-af9a-6cfc99e595af
+		summarizeBy: none
+		sourceColumn: Trimestre
+
+		annotation SummarizationSetBy = Automatic
+
+	column InicioMes
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: fd718f22-ffcc-4cef-8b1a-523491ee988c
+		summarizeBy: none
+		sourceColumn: InicioMes
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column FinMes
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 0b93710f-1fd0-4851-8ee1-b00d2b8ceec7
+		summarizeBy: none
+		sourceColumn: FinMes
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column EsFinDeMes
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 97579172-2d98-4738-959d-75278e80a7d9
+		summarizeBy: none
+		sourceColumn: EsFinDeMes
+
+		annotation SummarizationSetBy = Automatic
+
+	column SemanaDelAño
+		dataType: int64
+		formatString: 0
+		lineageTag: 49325edf-8c88-4959-8db8-e44b12a95f51
+		summarizeBy: sum
+		sourceColumn: SemanaDelAño
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiaSemana
+		dataType: int64
+		formatString: 0
+		lineageTag: 37f3ae84-7e1d-4956-b953-43abdadcb32c
+		summarizeBy: sum
+		sourceColumn: DiaSemana
+
+		annotation SummarizationSetBy = Automatic
+
+	column DiaSemanaNombre
+		dataType: string
+		lineageTag: 037bb6e3-7109-486c-ae42-fb4d32171c4c
+		summarizeBy: none
+		sourceColumn: DiaSemanaNombre
+
+		annotation SummarizationSetBy = Automatic
+
+	column EsMesActual
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 88ae5b82-bcde-475b-869b-89a67bc8dd6b
+		summarizeBy: none
+		sourceColumn: EsMesActual
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_date = m
+		mode: import
+		queryGroup: 02_Dimensiones
+		source =
+				let
+				    // Rango dinámico según fact_art[periodo_date]
+				    Fact = try #"fact_art" otherwise null,
+				    MinDateRaw =
+				        if Fact <> null and Table.HasColumns(Fact, "periodo_date")
+				        then try List.Min(List.RemoveNulls(Table.Column(Fact, "periodo_date"))) otherwise null
+				        else null,
+				    MaxDateRaw =
+				        if Fact <> null and Table.HasColumns(Fact, "periodo_date")
+				        then try List.Max(List.RemoveNulls(Table.Column(Fact, "periodo_date"))) otherwise null
+				        else null,
+				
+				    Hoy       = Date.From(DateTime.LocalNow()),
+				    StartDate = if MinDateRaw <> null then Date.StartOfMonth(Date.From(MinDateRaw)) else Date.StartOfMonth(Hoy),
+				
+				    // ✅ SIN meses futuros: hasta el último mes con datos
+				    EndDate   = if MaxDateRaw <> null then Date.EndOfMonth(Date.From(MaxDateRaw)) else Date.EndOfMonth(Hoy),
+				
+				    DayCount = Duration.Days(EndDate - StartDate) + 1,
+				    DateList = List.Dates(StartDate, DayCount, #duration(1,0,0,0)),
+				    Tbl0     = Table.FromList(DateList, Splitter.SplitByNothing(), {"date"}),
+				
+				    // Atributos de calendario (ES)
+				    AddYear   = Table.AddColumn(Tbl0, "Año", each Date.Year([date]), Int64.Type),
+				    AddMonth  = Table.AddColumn(AddYear, "Mes", each Date.Month([date]), Int64.Type),
+				    AddMName  = Table.AddColumn(AddMonth, "MesNombre", each Text.Proper(Date.MonthName([date], "es-AR")), type text),
+				    AddMAbbr  = Table.AddColumn(AddMName, "MesAbrev", each Text.Start([MesNombre], 3), type text),
+				    AddYM     = Table.AddColumn(AddMAbbr, "AñoMes", each Text.From([Año]) & "-" & Text.PadStart(Text.From([Mes]),2,"0"), type text),
+				    AddQtr    = Table.AddColumn(AddYM, "Trimestre", each "T" & Text.From(Date.QuarterOfYear([date])), type text),
+				    AddStartM = Table.AddColumn(AddQtr, "InicioMes", each Date.StartOfMonth([date]), type date),
+				    AddEndM   = Table.AddColumn(AddStartM, "FinMes", each Date.EndOfMonth([date]), type date),
+				    AddEoM    = Table.AddColumn(AddEndM, "EsFinDeMes", each [date] = [FinMes], type logical),
+				    AddDow    = Table.AddColumn(AddEoM, "DiaSemana", each Date.DayOfWeek([date], Day.Monday) + 1, Int64.Type),
+				    AddDowN   = Table.AddColumn(AddDow, "DiaSemanaNombre", each Text.Proper(Date.DayOfWeekName([date], "es-AR")), type text),
+				    AddWk     = Table.AddColumn(AddDowN, "SemanaDelAño", each Date.WeekOfYear([date]), Int64.Type),
+				    AddCurM   = Table.AddColumn(AddWk, "EsMesActual", each ([Año]=Date.Year(Hoy) and [Mes]=Date.Month(Hoy)), type logical),
+				
+				    Rename    = Table.RenameColumns(AddCurM, {{"date","Fecha"}}),
+				    EnsureFechaType = Table.TransformColumnTypes(Rename, {{"Fecha", type date}}),
+				    Reorder   = Table.ReorderColumns(EnsureFechaType, {"Fecha","Año","Mes","MesNombre","MesAbrev","AñoMes","Trimestre","InicioMes","FinMes","EsFinDeMes","SemanaDelAño","DiaSemana","DiaSemanaNombre","EsMesActual"})
+				in
+				    Reorder
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

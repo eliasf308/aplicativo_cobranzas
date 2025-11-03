@@ -1,0 +1,593 @@
+table '⚙ Medidas'
+	lineageTag: 0c1b458f-7ed8-4dd4-8a5d-d9fe0914a864
+
+	measure 'Deuda Total' =
+			
+			SUM ( fact_art[deuda_total] )
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		lineageTag: 9bd6a017-19e0-4263-ae74-93f9dd8d89f0
+
+	measure 'Contratos con deuda' =
+			
+			CALCULATE (
+			    DISTINCTCOUNT ( fact_art[contrato] ),
+			    FILTER ( fact_art, fact_art[deuda_total] > 0 )
+			)
+		formatString: 0
+		lineageTag: 34e12041-17b9-4f7b-9ab3-80a34479b129
+
+	measure 'Contratos intimados' =
+			
+			COUNTROWS (
+			    SUMMARIZE (
+			        FILTER (
+			            fact_art,
+			            fact_art[deuda_total] > 0
+			                && fact_art[estado_intimacion] = "Intimado"
+			        ),
+			        fact_art[contrato]
+			    )
+			)
+		formatString: 0
+		lineageTag: 80085375-3d56-4c4c-a4ce-5328de2854e6
+
+	measure 'Contratos no intimados' =
+			
+			COUNTROWS (
+			    SUMMARIZE (
+			        FILTER (
+			            fact_art,
+			            fact_art[deuda_total] > 0
+			                && fact_art[estado_intimacion] = "No intimado"
+			        ),
+			        fact_art[contrato]
+			    )
+			)
+		formatString: 0
+		lineageTag: 7bd3893c-3fde-45a4-b4f5-b703283cea0e
+
+	measure 'Aseguradoras en periodo' =
+			
+			VAR ContratosConDeuda =
+			    CALCULATETABLE (
+			        VALUES ( fact_art[contrato] ),
+			        fact_art[deuda_total] > 0          -- respeta meses/filtros aplicados
+			    )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( dim_deals[aseguradora_enviada_lookup] ),
+			    KEEPFILTERS ( TREATAS ( ContratosConDeuda, dim_deals[contrato] ) ),
+			    NOT ISBLANK ( dim_deals[aseguradora_enviada_lookup] )
+			)
+		formatString: 0
+		lineageTag: 3b0e3944-98ae-4987-b93d-0cdcaa42893b
+
+	measure 'Deuda Total (último período)' =
+			
+			VAR MaxMesVisible =
+			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
+			RETURN
+			CALCULATE ( [Deuda Total], fact_art[periodo_date] = MaxMesVisible )
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		lineageTag: e187ebfe-33ed-49ea-858f-870b91c33366
+
+	measure 'Contratos con deuda (último período)' =
+			
+			VAR MaxMesVisible =
+			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( fact_art[contrato] ),
+			    fact_art[periodo_date] = MaxMesVisible,
+			    fact_art[deuda_total] > 0
+			)
+		formatString: 0
+		lineageTag: 24eb0662-b5cd-48d0-821d-c13a12a85ca5
+
+	measure 'Contratos con deuda (cartera)' =
+			
+			VAR Cartera =
+			    CALCULATETABLE (
+			        VALUES ( dim_deals[contrato] ),
+			        KEEPFILTERS ( dim_deals[stage] = "Cerrado (ganado)" ),
+			        KEEPFILTERS ( dim_deals[cuenta_perdida] = "Vigente" )
+			    )
+			VAR ConDeudaEnPeriodo =
+			    CALCULATETABLE (
+			        VALUES ( fact_art[contrato] ),
+			        FILTER ( fact_art, fact_art[deuda_total] > 0 )
+			    )
+			RETURN
+			COUNTROWS ( INTERSECT ( Cartera, ConDeudaEnPeriodo ) )
+		formatString: 0
+		lineageTag: f9629fc8-9089-4eb8-84d0-0c64c7aaaaa1
+
+	measure 'Tasa contratos con deuda (%)' =
+			
+			DIVIDE ( [Contratos con deuda], [Cartera vigente (por período)] )
+		lineageTag: bf12043d-0e16-44fd-8e0a-8598f07d88b4
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Contratos con deuda (último período, cartera)' =
+			
+			VAR IniMes  = MAX ( dim_date[InicioMes] )
+			VAR ProxMes = EDATE ( IniMes, 1 )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( fact_art[contrato] ),
+			    fact_art[deuda_total] > 0,
+			    fact_art[periodo_date] >= IniMes,
+			    fact_art[periodo_date] <  ProxMes,
+			    dim_deals[stage] = "Cerrado (ganado)",
+			    FILTER (
+			        dim_deals,
+			        COALESCE ( dim_deals[inicio_de_vigencia], DATE (1900,1,1) ) <= ProxMes - 1 &&
+			        ( ISBLANK ( dim_deals[fecha_anulacion_final] ) || dim_deals[fecha_anulacion_final] >= ProxMes )
+			    )
+			)
+		formatString: 0
+		lineageTag: 4cc6c411-6279-45b7-a0ac-0d419f8636f7
+
+	measure 'Tasa contratos con deuda (%) (último período)' =
+			
+			DIVIDE (
+			    [Contratos con deuda (último período, cartera)],
+			    [Cartera vigente (último período)]
+			)
+		formatString: 0.00\ %;-0.00\ %;0.00\ %
+		lineageTag: a698565e-3a23-49ba-882a-8ef718446665
+
+	measure 'MoM Deuda (%)' =
+			
+			VAR Actual     = [Deuda Total]
+			VAR Anterior   = CALCULATE ( [Deuda Total], DATEADD ( dim_date[Fecha], -1, MONTH ) )
+			VAR HayActual  = CALCULATE ( COUNTROWS ( fact_art ) ) > 0
+			VAR HayAnterior= CALCULATE ( COUNTROWS ( fact_art ), DATEADD ( dim_date[Fecha], -1, MONTH ) ) > 0
+			RETURN
+			IF ( NOT HayActual || NOT HayAnterior, BLANK(), DIVIDE ( Actual - Anterior, Anterior ) )
+		formatString: 0.0\ %;-0.0\ %;0.0\ %
+		lineageTag: def27063-4b76-4618-ad5a-fb6060e53066
+
+	measure 'Color MoM Deuda' =
+			
+			VAR v = [MoM Deuda (%)]
+			RETURN
+			IF (
+			    ISBLANK ( v ),
+			    BLANK(),
+			    IF ( v < 0, "#16a34a", IF ( v > 0, "#dc2626", "#9ca3af" ) )   -- verde / rojo / gris en 0
+			)
+		isHidden
+		lineageTag: 740a24d2-3347-4bd8-ba21-1a4e09d2701c
+
+		changedProperty = IsHidden
+
+	measure 'Color MoM Deuda (último período)' =
+			
+			VAR v = [MoM Deuda (%) (último período)]
+			RETURN
+			IF (
+			    ISBLANK ( v ),
+			    BLANK(),
+			    IF ( v < 0, "#16a34a", IF ( v > 0, "#dc2626", "#9ca3af" ) )   -- verde / rojo / gris en 0
+			)
+		isHidden
+		lineageTag: e59aa486-0f61-4b57-918c-d5ef0f963a93
+
+		changedProperty = IsHidden
+
+	measure 'MoM Deuda mensual (ultimo periodo)' =
+			
+			VAR v = [MoM Deuda (%) (último período)]
+			RETURN
+			IF (
+			    ISBLANK ( v ),
+			    BLANK(),
+			    (IF ( v > 0, "▲ ", IF ( v < 0, "▼ ", "▪ "))) & FORMAT ( v, "0.0 %" )
+			)
+		lineageTag: 9376baac-9fcd-41b9-8da3-8cb33411a7a2
+
+	measure 'MoM Deuda (%) (último período)' =
+			
+			VAR MaxMesVisible =
+			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
+			VAR MesAnterior = EDATE ( MaxMesVisible, -1 )
+			VAR DeudaAhora =
+			    CALCULATE ( [Deuda Total], fact_art[periodo_date] = MaxMesVisible )
+			VAR DeudaAntes =
+			    CALCULATE ( [Deuda Total], fact_art[periodo_date] = MesAnterior )
+			RETURN
+			DIVIDE ( DeudaAhora - DeudaAntes, DeudaAntes )
+		lineageTag: 036a486b-469e-4950-b733-7c8ab677479a
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Contratos que entran en deuda (período, cartera)' =
+			
+			VAR Cartera =
+			    CALCULATETABLE (
+			        VALUES ( dim_deals[contrato] ),
+			        KEEPFILTERS ( dim_deals[stage] = "Cerrado (ganado)" ),
+			        KEEPFILTERS ( dim_deals[cuenta_perdida] = "Vigente" )
+			    )
+			VAR ConDeuda_Ahora =
+			    CALCULATETABLE (
+			        VALUES ( fact_art[contrato] ),
+			        fact_art[deuda_total] > 0
+			    )
+			VAR ConDeuda_Antes =
+			    CALCULATETABLE (
+			        VALUES ( fact_art[contrato] ),
+			        DATEADD ( dim_date[Fecha], -1, MONTH ),
+			        fact_art[deuda_total] > 0
+			    )
+			RETURN
+			COUNTROWS ( EXCEPT ( INTERSECT ( Cartera, ConDeuda_Ahora ), ConDeuda_Antes ) )
+		formatString: 0
+		lineageTag: 5c65aad9-bb08-456e-8c2f-e408fbb78d17
+
+	measure 'Contratos recuperados (período, cartera)' =
+			
+			VAR Cartera =
+			    CALCULATETABLE (
+			        VALUES ( dim_deals[contrato] ),
+			        KEEPFILTERS ( dim_deals[stage] = "Cerrado (ganado)" ),
+			        KEEPFILTERS ( dim_deals[cuenta_perdida] = "Vigente" )
+			    )
+			VAR ConDeuda_Ahora =
+			    CALCULATETABLE (
+			        VALUES ( fact_art[contrato] ),
+			        fact_art[deuda_total] > 0
+			    )
+			VAR ConDeuda_Antes =
+			    CALCULATETABLE (
+			        VALUES ( fact_art[contrato] ),
+			        DATEADD ( dim_date[Fecha], -1, MONTH ),
+			        fact_art[deuda_total] > 0
+			    )
+			RETURN
+			COUNTROWS ( EXCEPT ( INTERSECT ( Cartera, ConDeuda_Antes ), ConDeuda_Ahora ) )
+		formatString: 0
+		lineageTag: a846aa55-f8d0-4236-a668-e75d84dc7e4a
+
+	measure 'Variación neta (contratos con deuda)' =
+			
+			[Contratos que entran en deuda (período, cartera)]
+			 - [Contratos recuperados (período, cartera)]
+		formatString: 0
+		lineageTag: 215af4d3-0e25-4e89-ae2d-d1a0fa29edb2
+
+	measure 'Tasa contratos deuda' =
+			
+			VAR MaxMesVisible =
+			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
+			VAR MesAnterior = EDATE ( MaxMesVisible, -1 )
+			VAR RateNow =
+			    CALCULATE ( [Tasa contratos con deuda (%)], fact_art[periodo_date] = MaxMesVisible )
+			VAR RatePrev =
+			    CALCULATE ( [Tasa contratos con deuda (%)], fact_art[periodo_date] = MesAnterior )
+			VAR Delta = RateNow - RatePrev
+			RETURN
+			IF (
+			    ISBLANK ( RateNow ),
+			    BLANK(),
+			    (IF ( Delta > 0, "▲ ", IF ( Delta < 0, "▼ ", "▪ "))) & FORMAT ( RateNow, "0.0 %" )
+			)
+		lineageTag: 154a8ae5-f379-4b4d-8692-636ebea13489
+
+	measure 'Color Tasa c/deuda (último período)' =
+			
+			VAR MaxMesVisible =
+			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
+			VAR MesAnterior = EDATE ( MaxMesVisible, -1 )
+			VAR RateNow =
+			    CALCULATE ( [Tasa contratos con deuda (%)], fact_art[periodo_date] = MaxMesVisible )
+			VAR RatePrev =
+			    CALCULATE ( [Tasa contratos con deuda (%)], fact_art[periodo_date] = MesAnterior )
+			VAR Delta = RateNow - RatePrev
+			RETURN
+			IF (
+			    ISBLANK ( RateNow ),
+			    BLANK(),
+			    IF ( Delta > 0, "#dc2626", IF ( Delta < 0, "#16a34a", "#9ca3af" ) )   -- rojo sube, verde baja, gris igual
+			)
+		lineageTag: acf12c06-5b6c-4a6c-827a-010419dcee45
+
+	measure 'Color por tamaño (scatter)' =
+			
+			VAR Size = [Contratos con deuda (último período)]
+			VAR Tabla =
+			    SUMMARIZE (
+			        ALLSELECTED ( dim_deals[aseguradora_enviada_lookup] ),
+			        dim_deals[aseguradora_enviada_lookup],
+			        "Size", [Contratos con deuda (último período)]
+			    )
+			VAR P33 = PERCENTILEX.INC ( Tabla, [Size], 0.33 )
+			VAR P66 = PERCENTILEX.INC ( Tabla, [Size], 0.66 )
+			RETURN
+			IF (
+			    ISBLANK ( Size ),
+			    BLANK(),
+			    IF ( Size < P33, "#22c55e", IF ( Size < P66, "#f59e0b", "#ef4444" ) )  -- verde / ámbar / rojo
+			)
+		lineageTag: 2c5417dc-548f-4319-95e1-9687594be53c
+
+	measure 'Deals anulados (por período)' =
+			
+			VAR Mes = SELECTEDVALUE ( dim_date[InicioMes] )
+			RETURN
+			IF (
+			    ISBLANK ( Mes ),
+			    BLANK(),
+			    CALCULATE (
+			        DISTINCTCOUNT ( dim_deals[numero_de_contrato] ),
+			        KEEPFILTERS ( dim_deals[cuenta_perdida] <> "Vigente" ),
+			        FILTER (
+			            ALL ( dim_deals[fecha_anulaci_n] ),
+			            NOT ISBLANK ( dim_deals[fecha_anulaci_n] )
+			                && DATE ( YEAR ( dim_deals[fecha_anulaci_n] ), MONTH ( dim_deals[fecha_anulaci_n] ), 1 ) = Mes
+			        )
+			    )
+			)
+		formatString: 0
+		lineageTag: c02fc14c-4331-40a7-a59a-71a50b65540c
+
+	measure 'Deals anulados (por período, motivo)' =
+			
+			VAR InicioMes = SELECTEDVALUE( dim_date[InicioMes] )
+			RETURN
+			IF (
+			    ISBLANK( InicioMes ),
+			    BLANK(),
+			    CALCULATE (
+			        DISTINCTCOUNT ( dim_deals_hist[zoho_id] ),                -- cuenta cada deal una sola vez
+			        KEEPFILTERS ( dim_deals_hist[cuenta_perdida] <> "Vigente" ),
+			        dim_deals_hist[periodo_anulacion] >= InicioMes,
+			        dim_deals_hist[periodo_anulacion] <  EDATE( InicioMes, 1 ) -- dentro del mes
+			    )
+			)
+		formatString: 0
+		lineageTag: 38ab8dc4-e035-4b54-a4c2-885ad1272f43
+
+	measure 'Anulados (total)' =
+			
+			VAR MinMes =
+			    CALCULATE ( MIN ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
+			VAR MaxMes =
+			    CALCULATE ( MAX ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( dim_deals_hist[zoho_id] ),
+			    dim_deals_hist[cuenta_perdida] <> "Vigente",
+			    dim_deals_hist[periodo_anulacion] >= MinMes,
+			    dim_deals_hist[periodo_anulacion] <  EDATE ( MaxMes, 1 )
+			)
+		formatString: 0
+		lineageTag: fb7ceae6-c926-4ca1-a541-6bb9d9e0ca53
+
+	measure 'Anulados (visibles, motivo único)' =
+			
+			VAR MinMes = CALCULATE ( MIN ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
+			VAR MaxMes = CALCULATE ( MAX ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( dim_deals_hist[zoho_id] ),
+			    -- tomar solo la fila "final" de anulación por deal
+			    FILTER (
+			        dim_deals_hist,
+			        NOT ISBLANK ( dim_deals_hist[periodo_anulacion] ) &&
+			        dim_deals_hist[periodo_anulacion] >= MinMes &&
+			        dim_deals_hist[periodo_anulacion] <  EDATE ( MaxMes, 1 ) &&
+			        dim_deals_hist[fecha_anulacion_final] =
+			            CALCULATE (
+			                MAX ( dim_deals_hist[fecha_anulacion_final] ),
+			                ALLEXCEPT ( dim_deals_hist, dim_deals_hist[zoho_id] )
+			            )
+			    )
+			)
+		formatString: 0
+		lineageTag: ba4425eb-3c78-45d4-9746-d5f16761178f
+
+	measure 'Anulados – Falta de pago (períodos visibles)' =
+			
+			VAR MinMes =
+			    CALCULATE ( MIN ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
+			VAR MaxMes =
+			    CALCULATE ( MAX ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( dim_deals_hist[zoho_id] ),
+			    dim_deals_hist[periodo_anulacion] >= MinMes,
+			    dim_deals_hist[periodo_anulacion] <  EDATE ( MaxMes, 1 ),
+			    dim_deals_hist[cuenta_perdida] = "Rescindido (Falta de Pago)"
+			)
+		formatString: 0
+		lineageTag: 46d9fe27-921e-47e4-a4ed-29aaedcb4f1b
+
+	measure 'Deuda (último período, cuenta)' = ```
+			
+			VAR MaxMesVisible =
+			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
+			VAR ContratosDeLaCuenta =
+			    CALCULATETABLE ( VALUES ( dim_deals[contrato] ) )
+			RETURN
+			CALCULATE (
+			    SUM ( fact_art[deuda_total] ),
+			    fact_art[periodo_date] = MaxMesVisible,
+			    TREATAS ( ContratosDeLaCuenta, fact_art[contrato] )
+			)
+			
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		lineageTag: b7f0e2da-b543-4db1-9067-07270a9fcf3d
+
+	measure 'Participación deuda (último período, cuenta) %' =
+			
+			VAR DeudaCuenta = [Deuda (último período, cuenta)]
+			VAR DeudaTotal  = [Deuda Total (último período)]
+			RETURN DIVIDE( DeudaCuenta, DeudaTotal )
+		formatString: 0.0\ %;-0.0\ %;0.0\ %
+		lineageTag: fefbf53c-98ae-4f5f-8151-48fdc8da148a
+
+	measure 'Pareto % acumulado (cuenta)' = ```
+			
+			VAR TablaBase =
+			    ADDCOLUMNS (
+			        ALLSELECTED ( dim_accounts[account_name] ),
+			        "__deuda", [Deuda (último período, cuenta)]
+			    )
+			VAR TablaOrden =
+			    FILTER ( TablaBase, NOT ISBLANK ( [__deuda] ) && [__deuda] > 0 )
+			VAR MiDeuda = [Deuda (último período, cuenta)]
+			VAR MiRank  = RANKX ( TablaOrden, [__deuda], MiDeuda, DESC, DENSE )
+			VAR SumaAcum =
+			    SUMX (
+			        FILTER ( TablaOrden, RANKX ( TablaOrden, [__deuda], , DESC, DENSE ) <= MiRank ),
+			        [__deuda]
+			    )
+			VAR TotalVisible =
+			    SUMX ( TablaOrden, [__deuda] )
+			RETURN
+			DIVIDE ( SumaAcum, TotalVisible )
+			
+			```
+		formatString: 0.00\ %;-0.00\ %;0.00\ %
+		lineageTag: c621223a-b60a-4fe8-9fb5-fdccc26e2d5f
+
+	measure 'Q promedio (último período, cuenta)' =
+			
+			VAR MaxMesVisible =
+			    CALCULATE( MAX( fact_art[periodo_date] ), ALLSELECTED( dim_date ) )
+			VAR ContratosCuenta =
+			    CALCULATETABLE( VALUES( dim_deals[contrato] ) )
+			RETURN
+			CALCULATE(
+			    AVERAGE( fact_art[q_periodos_deudores] ),
+			    fact_art[periodo_date] = MaxMesVisible,
+			    fact_art[deuda_total] > 0,
+			    TREATAS( ContratosCuenta, fact_art[contrato] )
+			)
+		lineageTag: 42b1bdd1-609e-44dd-9fc4-b5cab34e3835
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Intimación (último período, cuenta)' =
+			
+			VAR q = [Q promedio (último período, cuenta)]
+			RETURN IF( NOT ISBLANK(q) && q >= 3, "Intimado", "No intimado" )
+		lineageTag: a72ebdaa-c78a-4c10-ade4-d56a03761124
+
+	measure 'Color por intimación' =
+			
+			VAR q = [Q promedio (último período, cuenta)]
+			RETURN
+			IF ( NOT ISBLANK(q) && q >= 3, "#E81123",  "#20284E" )   -- rojo / azul
+		lineageTag: f8b978ca-891e-4705-8db4-269ab46ebdf8
+
+	measure 'Cartera vigente (por período)' =
+			
+			VAR FinMes = EOMONTH ( MAX ( dim_date[InicioMes] ), 0 )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( dim_deals[contrato] ),
+			    dim_deals[stage] = "Cerrado (ganado)",
+			    FILTER (
+			        dim_deals,
+			        COALESCE ( dim_deals[inicio_de_vigencia], DATE ( 1900, 1, 1 ) ) <= FinMes
+			        && (
+			            ISBLANK ( dim_deals[fecha_anulacion_final] )
+			            || dim_deals[fecha_anulacion_final] > FinMes
+			        )
+			    )
+			)
+		formatString: 0
+		lineageTag: c144d416-4090-43ac-b84a-fd7ece60e9b5
+
+	measure 'Contratos con deuda (por período, cartera)' =
+			
+			VAR FinMes = EOMONTH ( MAX ( dim_date[InicioMes] ), 0 )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( fact_art[contrato] ),
+			    fact_art[deuda_total] > 0,
+			    dim_deals[stage] = "Cerrado (ganado)",
+			    FILTER (
+			        dim_deals,
+			        COALESCE ( dim_deals[inicio_de_vigencia], DATE(1900,1,1) ) <= FinMes
+			            && ( ISBLANK ( dim_deals[fecha_anulacion_final] )
+			                 || dim_deals[fecha_anulacion_final] > FinMes )
+			    )
+			)
+		formatString: 0
+		lineageTag: 860ad712-d6ac-4e17-9dab-c5c707c3f567
+
+	measure 'Cartera vigente (último período)' =
+			
+			VAR IniMes  = MAX ( dim_date[InicioMes] )
+			VAR ProxMes = EDATE ( IniMes, 1 )
+			RETURN
+			CALCULATE (
+			    DISTINCTCOUNT ( dim_deals[contrato] ),
+			    dim_deals[stage] = "Cerrado (ganado)",
+			    FILTER (
+			        dim_deals,
+			        COALESCE ( dim_deals[inicio_de_vigencia], DATE ( 1900, 1, 1 ) ) <= ProxMes - 1
+			        && (
+			            ISBLANK ( dim_deals[fecha_anulacion_final] )
+			            || dim_deals[fecha_anulacion_final] >= ProxMes
+			        )
+			    )
+			)
+		formatString: 0
+		lineageTag: 20ca234e-2f3d-4679-868d-c54547ec185f
+
+	measure 'Tasa c/deuda (%) (último)' =
+			
+			VAR UltIni =
+			    MAXX ( ALLSELECTED ( 'dim_date'[InicioMes] ), 'dim_date'[InicioMes] )
+			RETURN
+			CALCULATE (
+			    [Tasa contratos con deuda (%)],
+			    'dim_date'[InicioMes] = UltIni
+			)
+		formatString: 0
+		lineageTag: aef1fe21-136f-44ae-84c8-49cbc5ea737b
+
+	measure 'Tasa c/deuda (%) (previo)' =
+			
+			VAR UltIni  =
+			    MAXX ( ALLSELECTED ( 'dim_date'[InicioMes] ), 'dim_date'[InicioMes] )
+			VAR PrevIni = EDATE ( UltIni, -1 )
+			RETURN
+			CALCULATE (
+			    [Tasa contratos con deuda (%)],
+			    'dim_date'[InicioMes] = PrevIni
+			)
+		lineageTag: 44955d77-b582-4ec9-bbfc-716da02f9d8d
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column dummy
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 9149a15d-894e-4516-bef7-b4d313f02d70
+		summarizeBy: sum
+		sourceColumn: dummy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition '⚙ Medidas' = m
+		mode: import
+		source =
+				let
+				    Origen = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMlSKjQUA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [dummy = _t]),
+				    #"Tipo cambiado" = Table.TransformColumnTypes(Origen,{{"dummy", Int64.Type}})
+				in
+				    #"Tipo cambiado"
+
+	annotation PBI_ResultType = Table
+

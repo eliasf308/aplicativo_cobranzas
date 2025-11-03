@@ -1,0 +1,415 @@
+expression 'public crm_accounts' =
+		let
+		    Origen = PostgreSQL.Database("127.0.0.1:5432", "cobranzas_db"),
+		    public_crm_accounts = Origen{[Schema="public",Item="crm_accounts"]}[Data]
+		in
+		    public_crm_accounts
+	lineageTag: e080a6b3-73d2-40ba-a43a-fc32a5220956
+	queryGroup: 00_Origen
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression 'public crm_deals' =
+		let
+		    Origen = PostgreSQL.Database("127.0.0.1:5432", "cobranzas_db"),
+		    public_crm_deals = Origen{[Schema="public",Item="crm_deals"]}[Data]
+		in
+		    public_crm_deals
+	lineageTag: bbb989f6-d6ed-4829-8ead-f267fb707229
+	queryGroup: 00_Origen
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression 'public crm_contacts' =
+		let
+		    Origen = PostgreSQL.Database("127.0.0.1:5432", "cobranzas_db"),
+		    public_crm_contacts = Origen{[Schema="public",Item="crm_contacts"]}[Data]
+		in
+		    public_crm_contacts
+	lineageTag: 8f5c4fb4-e3eb-433a-b71e-b0eaf7c9f93f
+	queryGroup: 00_Origen
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression 'public art_artdashboardcontratoperiodo' =
+		let
+		    Origen = PostgreSQL.Database("127.0.0.1:5432", "cobranzas_db"),
+		    public_art_artdashboardcontratoperiodo = Origen{[Schema="public",Item="art_artdashboardcontratoperiodo"]}[Data]
+		in
+		    public_art_artdashboardcontratoperiodo
+	lineageTag: 4544fe44-d20c-4d45-ae9e-1c7430e96b0c
+	queryGroup: 00_Origen
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression QA_Duplicados_deals =
+		let
+		    Origen = stg_crm_deals_all,
+		    Limpio = Table.TransformColumns(Origen, {{"numero_de_contrato", each Text.Upper(Text.Trim(_)), type text}}),
+		    SoloContrato = Table.SelectColumns(Limpio, {"numero_de_contrato"}),
+		    SinVacios = Table.SelectRows(SoloContrato, each [numero_de_contrato] <> null and [numero_de_contrato] <> ""),
+		    Agrupar = Table.Group(SinVacios, {"numero_de_contrato"}, {{"conteo", each Table.RowCount(_), Int64.Type}}),
+		    Duplicados = Table.SelectRows(Agrupar, each [conteo] > 1),
+		    Ordenado = Table.Sort(Duplicados, {{"conteo", Order.Descending}})
+		in
+		    Ordenado
+	lineageTag: fe14532b-4aaa-4e55-b4e8-e0908239cde9
+	queryGroup: QA
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression stg_art_artdashboardcontratoperiodo =
+		let
+		    Source = #"public art_artdashboardcontratoperiodo",
+		
+		    // Dejo las columnas necesarias (ahora incluye q_periodos_deudores)
+		    Keep = Table.SelectColumns(
+		        Source,
+		        {"periodo","razon_social","cuit","contrato","deuda_total","q_periodos_deudores"},
+		        MissingField.UseNull
+		    ),
+		
+		    // Limpieza mínima consistente con lo anterior
+		    Clean = Table.TransformColumns(
+		        Keep,
+		        {
+		            {"razon_social", each if _ is text then Text.Trim(_) else _, type any},
+		            {"cuit",         each Text.Trim(Text.From(_)), type text},
+		            {"contrato",     each Text.Upper(Text.Trim(Text.From(_))), type text}
+		        }
+		    ),
+		
+		    // Tipos numéricos
+		    Typed = Table.TransformColumnTypes(
+		        Clean,
+		        {
+		            {"deuda_total", type number},
+		            {"q_periodos_deudores", type number}
+		        }
+		    )
+		in
+		    Typed
+	lineageTag: 7acf6b49-7261-45d0-9d28-a4c595f3c5a8
+	queryGroup: 01_Staging
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression stg_crm_deals_all =
+		let
+		    // Tabla origen
+		    Source = #"public crm_deals",
+		
+		    // Normalizo nombres alternativos a minúsculas (si existieran con otra capitalización)
+		    NormalizeNames =
+		        List.Accumulate(
+		            {
+		                {"Fecha_Anulaci_n", "fecha_anulaci_n"},
+		                {"Fecha_Traspaso_Interno", "fecha_traspaso_interno"},
+		                {"Fecha_de_designaci_n", "fecha_de_designaci_n"},
+		                {"Fecha_de_rescici_n_por_pago", "fecha_de_rescici_n_por_pago"},
+		                {"Fecha_de_traspaso", "fecha_de_traspaso"}
+		            },
+		            Source,
+		            (state, pair) =>
+		                if Table.HasColumns(state, pair{0}) and not Table.HasColumns(state, pair{1})
+		                then Table.RenameColumns(state, {pair})
+		                else state
+		        ),
+		
+		    // Selección base (incluye TODAS las fechas de anulación posibles)
+		    SelectBase = Table.SelectColumns(
+		        NormalizeNames,
+		        {
+		            "zoho_id","stage","account_id","account_name","contact_name","contact_id",
+		            "numero_de_contrato","inicio_de_vigencia","fin_de_vigencia",
+		            "fecha_real_cierre_deal","fecha_real_apertura_de_deal",
+		            "motivo","tipo_de_deal","fecha_de_traspaso","cuenta_perdida",
+		            "segmentaci_n_clientes1","ramo","aseguradora_propuesta","premio_total",
+		            "motivo_endoso","moneda","fecha_anulaci_n","renueva_poliza",
+		            "canal_comercial","m_todo_de_pago","aseguradora_enviada_lookup",
+		            "fecha_traspaso_interno","fecha_de_designaci_n","fecha_de_rescici_n_por_pago",
+		            "closing_date"
+		        },
+		        MissingField.UseNull
+		    ),
+		
+		    // Alias: contact_name_id = contact_id
+		    ContactNameId = Table.AddColumn(SelectBase, "contact_name_id", each [contact_id], type text),
+		
+		    // Filtro ramo ART
+		    FiltroRamo = Table.SelectRows(ContactNameId, each Text.Upper(Text.Trim(([ramo] & ""))) = "ART"),
+		
+		    // Sin contratos vacíos
+		    SinContratoVacio = Table.SelectRows(
+		        FiltroRamo,
+		        each let v = Text.Trim(Text.From([numero_de_contrato]?)) in v <> null and v <> ""
+		    ),
+		
+		    // Normalizaciones
+		    TrimNormalize = Table.TransformColumns(
+		        SinContratoVacio,
+		        {
+		            {"numero_de_contrato", each Text.Upper(Text.Trim(Text.From(_))), type text},
+		            {"aseguradora_enviada_lookup", each Text.Proper(Text.Trim(Text.From(_))), type text},
+		            {"account_id", each Text.Trim(Text.From(_)), type text},
+		            {"contact_id", each Text.Trim(Text.From(_)), type text},
+		            {"zoho_id", each Text.Trim(Text.From(_)), type text}
+		        }
+		    ),
+		
+		    // Tipos (incluye todas las fechas alternativas)
+		    TiposFecha = Table.TransformColumnTypes(
+		        TrimNormalize,
+		        {
+		            {"inicio_de_vigencia", type date},
+		            {"fin_de_vigencia", type date},
+		            {"fecha_real_cierre_deal", type datetime},
+		            {"fecha_real_apertura_de_deal", type datetime},
+		            {"fecha_de_traspaso", type date},
+		            {"fecha_anulaci_n", type date},
+		            {"fecha_traspaso_interno", type date},
+		            {"fecha_de_designaci_n", type date},
+		            {"fecha_de_rescici_n_por_pago", type date},
+		            {"closing_date", type datetime}
+		        }
+		    ),
+		    TiposNum = Table.TransformColumnTypes(TiposFecha, {{"premio_total", type number}}),
+		
+		    // cuenta_perdida: nulos/vacíos → "Vigente"
+		    CuentaPerdidaVigente = Table.TransformColumns(
+		        TiposNum,
+		        {{"cuenta_perdida", each
+		            let t = Text.Trim(Text.From(_, "es-AR"))
+		            in if t = null or t = "" then "Vigente" else t, type text}}
+		    ),
+		
+		    // FKs y orígenes
+		    AddFKs =
+		        Table.ExpandRecordColumn(
+		            Table.AddColumn(
+		                CuentaPerdidaVigente,
+		                "tmp",
+		                each [
+		                    account_fk = [account_id],
+		                    contact_fk = [contact_id],
+		                    account_fk_source = "crm_deals",
+		                    contact_fk_source = "crm_deals"
+		                ],
+		                type record
+		            ),
+		            "tmp",
+		            {"account_fk","contact_fk","account_fk_source","contact_fk_source"}
+		        ),
+		
+		    // Fecha auxiliar (no dedup, solo por si la necesitás)
+		    FechaOrden = Table.AddColumn(
+		        AddFKs, "fecha_orden",
+		        each let a = try [fecha_real_cierre_deal] otherwise null in if a = null then [closing_date] else a,
+		        type datetime
+		    ),
+		
+		    // 🔎 Fecha de anulación efectiva según motivo (prioridades)
+		    FechaAnulEfectiva = Table.AddColumn(
+		        FechaOrden,
+		        "fecha_anulacion_final",
+		        each
+		            let
+		                motivo = Text.Upper(Text.Trim(Text.From([cuenta_perdida] & ""))),
+		                f_anul  = [fecha_anulaci_n],
+		                f_tint  = try [fecha_traspaso_interno] otherwise null,
+		                f_desi  = try [fecha_de_designaci_n] otherwise null,
+		                f_resc  = try [fecha_de_rescici_n_por_pago] otherwise null,
+		                f_trasp = try [fecha_de_traspaso] otherwise null,
+		
+		                byMotivo =
+		                    if motivo = "" or motivo = "VIGENTE" then null
+		                    else if Text.Contains(motivo, "TRASPAS") then
+		                        if f_trasp <> null then f_trasp else if f_tint <> null then f_tint else f_anul
+		                    else if Text.Contains(motivo, "RESC") or Text.Contains(motivo, "PAGO") then
+		                        if f_resc <> null then f_resc else f_anul
+		                    else if Text.Contains(motivo, "DESIG") then
+		                        if f_desi <> null then f_desi else f_anul
+		                    else
+		                        if f_anul <> null then f_anul
+		                        else if f_trasp <> null then f_trasp
+		                        else if f_tint <> null then f_tint
+		                        else if f_resc <> null then f_resc
+		                        else if f_desi <> null then f_desi else null
+		            in
+		                byMotivo,
+		        type date
+		    ),
+		
+		    // Mes de anulación (para agrupar en visuales)
+		    AddPeriodoAnul = Table.AddColumn(
+		        FechaAnulEfectiva, "periodo_anulacion",
+		        each if [fecha_anulacion_final] = null then null else Date.StartOfMonth([fecha_anulacion_final]),
+		        type date
+		    ),
+		
+		    // Limpieza
+		    RemoveAux = Table.RemoveColumns( AddPeriodoAnul, {"closing_date","contact_id"} ),
+		
+		    // Alias de contrato
+		    AddAliasContrato = Table.AddColumn(RemoveAux, "contrato", each [numero_de_contrato], type text)
+		in
+		    AddAliasContrato
+	lineageTag: e66c539c-a22c-46d6-b9e9-cc531c8f6049
+	queryGroup: 01_Staging
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression stg_crm_accounts =
+		let
+		    Source = #"public crm_accounts",
+		
+		    // --- Orden final deseado ---
+		    DesiredCols = {
+		        "zoho_id", "account_name", "aporte_lrt", "cuil", "c_digo_de_actividad",
+		        "alicuota_vigente", "referido_por_name", "provincia_2", "grupo_economico_name",
+		        "dom_stica", "costo_mensual", "broker", "alicuota_srt", "tipo_de_iva",
+		        "tipo_de_persona", "ejecutivo_customer_service_name", "cliente_importante",
+		        "ejecutivo_comercial", "CUIT_norm"
+		    },
+		
+		    // Si no existe "cuil", lo genero desde "cuit" (y si tampoco hay, queda null)
+		    EnsureCuil =
+		        if Table.HasColumns(Source, "cuil") then
+		            Source
+		        else if Table.HasColumns(Source, "cuit") then
+		            Table.AddColumn(Source, "cuil", each Text.From([cuit]), type text)
+		        else
+		            Table.AddColumn(Source, "cuil", each null, type text),
+		
+		    // Incluyo "cuit" temporalmente para el fallback de CUIT_norm
+		    SelectList = List.Union({ List.RemoveItems(DesiredCols, {"CUIT_norm"}), {"cuit"} }),
+		
+		    // Conservo columnas pedidas (y "cuit" temporal) — relleno faltantes con null
+		    Base = Table.SelectColumns(EnsureCuil, SelectList, MissingField.UseNull),
+		
+		    // Trim de todos los textos
+		    Trimmed = Table.TransformColumns(
+		        Base,
+		        List.Transform(
+		            Table.ColumnNames(Base),
+		            (c) => { c, each if _ is text then Text.Trim(_) else _, type any }
+		        )
+		    ),
+		
+		    // ✅ BROKER: nulos o vacíos → "PROMECOR"
+		    BrokerFix = Table.TransformColumns(
+		        Trimmed,
+		        {{"broker", each let t = try Text.Trim(Text.From(_)) otherwise "" in if t = null or t = "" then "PROMECOR" else t, type text}}
+		    ),
+		
+		    // Tipos de datos para numéricos
+		    Typed = Table.TransformColumnTypes(
+		        BrokerFix,
+		        {
+		            {"aporte_lrt", type number},
+		            {"alicuota_vigente", type number},
+		            {"costo_mensual", type number},
+		            {"alicuota_srt", type number}
+		        }
+		    ),
+		
+		    // CUIT_norm: dígitos desde "cuil"; si vacío, intento con "cuit" (si está presente)
+		    AddCUITNorm = Table.AddColumn(
+		        Typed,
+		        "CUIT_norm",
+		        each
+		            let
+		                base =
+		                    if [cuil] <> null and Text.Trim(Text.From([cuil])) <> "" then
+		                        Text.From([cuil])
+		                    else if Record.HasFields(_, "cuit") and [cuit] <> null and Text.Trim(Text.From([cuit])) <> "" then
+		                        Text.From([cuit])
+		                    else
+		                        null
+		            in
+		                if base = null then null else Text.Select(base, {"0".."9"}),
+		        type text
+		    ),
+		
+		    // Quito "cuit" temporal si quedó
+		    DropCuit = if Table.HasColumns(AddCUITNorm, "cuit") then Table.RemoveColumns(AddCUITNorm, {"cuit"}) else AddCUITNorm,
+		
+		    // Reorden final y unicidad
+		    Reordered = Table.ReorderColumns(DropCuit, DesiredCols, MissingField.Ignore),
+		    Dedup = Table.Distinct(Reordered, {"zoho_id"})
+		in
+		    Dedup
+	lineageTag: 610e7109-2871-4288-863f-9005930b2601
+	queryGroup: 01_Staging
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
+expression stg_crm_contacts =
+		let
+		    Source = #"public crm_contacts",
+		
+		    // Asegurar columna full_name si no existe
+		    EnsureFullName =
+		        if Table.HasColumns(Source, "full_name") then
+		            Source
+		        else if Table.HasColumns(Source, "contact_name") then
+		            Table.AddColumn(Source, "full_name", each Text.Trim(Text.From([contact_name])), type text)
+		        else
+		            Table.AddColumn(
+		                Source,
+		                "full_name",
+		                each
+		                    let
+		                        f = if Record.HasFields(_, "first_name") and [first_name] <> null then Text.Trim(Text.From([first_name])) else "",
+		                        l = if Record.HasFields(_, "last_name")  and [last_name]  <> null then Text.Trim(Text.From([last_name]))  else "",
+		                        joined = Text.Combine(List.Select({f, l}, each _ <> ""), " ")
+		                    in
+		                        if joined = "" then null else joined,
+		                type text
+		            ),
+		
+		    // Quedarme solo con las columnas pedidas
+		    Base = Table.SelectColumns(EnsureFullName, {"zoho_id","full_name","email"}, MissingField.UseNull),
+		
+		    // Limpieza (trim / formatos)
+		    Clean = Table.TransformColumns(
+		        Base,
+		        {
+		            {"zoho_id",   each if _ is text then Text.Trim(_) else Text.From(_), type text},
+		            {"full_name", each if _ is text then Text.Trim(_) else _, type any},
+		            {"email",     each if _ is text then Text.Lower(Text.Trim(_)) else _, type any}
+		        }
+		    ),
+		
+		    // Priorizar filas con email al deduplicar por zoho_id
+		    AddEmailRank = Table.AddColumn(Clean, "email_rank", each let e = [email] in if e = null or Text.Trim(Text.From(e)) = "" then 0 else 1, Int64.Type),
+		    SortForDedup = Table.Sort(AddEmailRank, {{"zoho_id", Order.Ascending}, {"email_rank", Order.Descending}}),
+		    Dedup = Table.Distinct(SortForDedup, {"zoho_id"}),
+		
+		    // Quitar auxiliar
+		    RemoveAux = Table.RemoveColumns(Dedup, {"email_rank"})
+		in
+		    RemoveAux
+	lineageTag: 546eff69-8a00-40c8-b63c-4af5698a4900
+	queryGroup: 01_Staging
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
