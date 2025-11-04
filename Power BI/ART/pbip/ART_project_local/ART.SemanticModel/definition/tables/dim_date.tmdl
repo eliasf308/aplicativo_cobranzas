@@ -75,7 +75,7 @@ table dim_date
 
 	column InicioMes
 		dataType: dateTime
-		formatString: Long Date
+		formatString: yyyy-mm
 		lineageTag: fd718f22-ffcc-4cef-8b1a-523491ee988c
 		summarizeBy: none
 		sourceColumn: InicioMes
@@ -83,6 +83,8 @@ table dim_date
 		annotation SummarizationSetBy = Automatic
 
 		annotation UnderlyingDateTimeDataType = Date
+
+		annotation PBI_FormatHint = {"isDateTimeCustom":true}
 
 	column FinMes
 		dataType: dateTime

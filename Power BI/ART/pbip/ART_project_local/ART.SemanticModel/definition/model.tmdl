@@ -62,10 +62,6 @@ ref table LocalDateTable_e5c893a8-ab65-4d66-99a4-85cacce628e3
 ref table LocalDateTable_0ce9abea-255e-47ca-986e-0dd83fea8f18
 ref table LocalDateTable_e98cc25e-b5ed-4c1f-8de4-eb21f0e0bda0
 ref table dim_aseguradoras
-ref table QA_Control_CRM
-ref table LocalDateTable_fcb29007-0644-4fb0-af9b-a2d75bd3eb6e
-ref table LocalDateTable_76bb7131-aacd-4f84-a83b-a75dbb2c9dbd
-ref table LocalDateTable_88f1f22e-c20d-4db5-90cd-f7a4d54ad543
 
 ref cultureInfo es-ES
 

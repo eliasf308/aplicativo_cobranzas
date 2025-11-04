@@ -135,18 +135,3 @@ relationship d914d136-e237-51f4-2d1d-c65ebfdb5a6d
 	fromColumn: dim_deals_hist.aseguradora_enviada_lookup
 	toColumn: dim_aseguradoras.aseguradora
 
-relationship e9666d87-39d3-4f85-a17c-2c220833416e
-	joinOnDateBehavior: datePartOnly
-	fromColumn: QA_Control_CRM.max_created_utc
-	toColumn: LocalDateTable_fcb29007-0644-4fb0-af9b-a2d75bd3eb6e.Date
-
-relationship d2a5408d-8502-42e6-89a9-509453410901
-	joinOnDateBehavior: datePartOnly
-	fromColumn: QA_Control_CRM.max_modified_utc
-	toColumn: LocalDateTable_76bb7131-aacd-4f84-a83b-a75dbb2c9dbd.Date
-
-relationship e9248ec5-60f7-4474-88bf-2b245cd50b82
-	joinOnDateBehavior: datePartOnly
-	fromColumn: QA_Control_CRM.max_modified_ar
-	toColumn: LocalDateTable_88f1f22e-c20d-4db5-90cd-f7a4d54ad543.Date
-

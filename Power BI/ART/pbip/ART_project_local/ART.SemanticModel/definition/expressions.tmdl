@@ -413,3 +413,48 @@ expression stg_crm_contacts =
 
 	annotation PBI_ResultType = Table
 
+expression QA_Control_CRM = ```
+		let
+		    // Referencias a las consultas de ORIGEN (tal como se llaman en tu lista)
+		    Accounts = #"public crm_accounts",
+		    Contacts = #"public crm_contacts",
+		    Deals    = #"public crm_deals",
+		
+		    // Función que resume filas y máximos por tabla (intenta mantener el folding)
+		    Agg = (tbl as table, name as text) as table =>
+		        let
+		            g = Table.Group(
+		                    tbl, 
+		                    {}, 
+		                    {
+		                        {"filas", each Table.RowCount(_), Int64.Type},
+		                        {"max_created_utc",  each List.Max([created_time]),  type nullable datetimezone},
+		                        {"max_modified_utc", each List.Max([modified_time]), type nullable datetimezone}
+		                    }
+		                ),
+		            conNombre = Table.AddColumn(g, "tabla", each name, Text.Type),
+		            reord     = Table.ReorderColumns(conNombre, {"tabla","filas","max_created_utc","max_modified_utc"}),
+		            conAR     = Table.AddColumn(
+		                            reord, 
+		                            "max_modified_ar", 
+		                            each try DateTimeZone.SwitchZone(DateTimeZone.From([max_modified_utc]), -3) otherwise null, 
+		                            type nullable datetimezone
+		                        )
+		        in
+		            conAR,
+		
+		    T1 = Agg(Accounts, "crm_accounts"),
+		    T2 = Agg(Contacts, "crm_contacts"),
+		    T3 = Agg(Deals,    "crm_deals"),
+		
+		    Control_CRM = Table.Combine({T1, T2, T3})
+		in
+		    Control_CRM
+		```
+	lineageTag: 5c81d97b-6c47-4f25-a915-ac8d2846f88c
+	queryGroup: QA
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+
