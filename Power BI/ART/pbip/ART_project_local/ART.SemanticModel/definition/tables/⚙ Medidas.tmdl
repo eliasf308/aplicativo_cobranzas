@@ -8,15 +8,6 @@ table '⚙ Medidas'
 		displayFolder: 01_Series
 		lineageTag: 9bd6a017-19e0-4263-ae74-93f9dd8d89f0
 
-	measure 'Contratos con deuda' =
-			
-			CALCULATE (
-			    DISTINCTCOUNT ( fact_art[contrato] ),
-			    FILTER ( fact_art, fact_art[deuda_total] > 0 )
-			)
-		formatString: 0
-		lineageTag: 34e12041-17b9-4f7b-9ab3-80a34479b129
-
 	measure 'Contratos intimados' =
 			
 			COUNTROWS (
@@ -63,6 +54,7 @@ table '⚙ Medidas'
 			    NOT ISBLANK ( dim_deals[aseguradora_enviada_lookup] )
 			)
 		formatString: 0
+		displayFolder: 01_Series
 		lineageTag: 3b0e3944-98ae-4987-b93d-0cdcaa42893b
 
 	measure 'Deuda Total (último período)' =
@@ -88,24 +80,6 @@ table '⚙ Medidas'
 		formatString: 0
 		displayFolder: 02_Wrappers_UltimoPeriodo
 		lineageTag: 24eb0662-b5cd-48d0-821d-c13a12a85ca5
-
-	measure 'Contratos con deuda (cartera actual)' =
-			
-			VAR Cartera =
-			    CALCULATETABLE (
-			        VALUES ( dim_deals[contrato] ),
-			        KEEPFILTERS ( dim_deals[stage] = "Cerrado (ganado)" ),
-			        KEEPFILTERS ( dim_deals[cuenta_perdida] = "Vigente" )
-			    )
-			VAR ConDeudaEnPeriodo =
-			    CALCULATETABLE (
-			        VALUES ( fact_art[contrato] ),
-			        FILTER ( fact_art, fact_art[deuda_total] > 0 )
-			    )
-			RETURN
-			COUNTROWS ( INTERSECT ( Cartera, ConDeudaEnPeriodo ) )
-		formatString: 0
-		lineageTag: f9629fc8-9089-4eb8-84d0-0c64c7aaaaa1
 
 	measure 'Tasa contratos con deuda (%)' =
 			
@@ -138,19 +112,6 @@ table '⚙ Medidas'
 		displayFolder: 02_Wrappers_UltimoPeriodo
 		lineageTag: 4cc6c411-6279-45b7-a0ac-0d419f8636f7
 
-	measure 'Tasa contratos con deuda (%) (último período)' =
-			
-			VAR UltimoPeriodo =
-			    MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
-			RETURN
-			CALCULATE (
-			    [Tasa contratos con deuda (%)],
-			    KEEPFILTERS ( dim_date[InicioMes] = UltimoPeriodo )
-			)
-		formatString: 0.00\ %;-0.00\ %;0.00\ %
-		displayFolder: 02_Wrappers_UltimoPeriodo
-		lineageTag: a698565e-3a23-49ba-882a-8ef718446665
-
 	measure 'MoM Deuda mensual' =
 			
 			VAR F = MAX ( dim_date[InicioMes] )
@@ -177,47 +138,6 @@ table '⚙ Medidas'
 		lineageTag: 740a24d2-3347-4bd8-ba21-1a4e09d2701c
 
 		changedProperty = IsHidden
-
-	measure 'Color MoM Deuda (último período)' =
-			
-			VAR v = [MoM Deuda (%) (último período)]
-			RETURN
-			IF (
-			    ISBLANK ( v ),
-			    BLANK(),
-			    IF ( v < 0, "#16a34a", IF ( v > 0, "#dc2626", "#9ca3af" ) )   -- verde / rojo / gris en 0
-			)
-		isHidden
-		displayFolder: 06_Color
-		lineageTag: e59aa486-0f61-4b57-918c-d5ef0f963a93
-
-		changedProperty = IsHidden
-
-	measure 'MoM Deuda mensual (ultimo periodo)' =
-			
-			VAR v = [MoM Deuda (%) (último período)]
-			RETURN
-			IF (
-			    ISBLANK ( v ),
-			    BLANK(),
-			    (IF ( v > 0, "▲ ", IF ( v < 0, "▼ ", "▪ "))) & FORMAT ( v, "0.0 %" )
-			)
-		lineageTag: 9376baac-9fcd-41b9-8da3-8cb33411a7a2
-
-	measure 'MoM Deuda (%) (último período)' =
-			
-			VAR MaxMesVisible =
-			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
-			VAR MesAnterior = EDATE ( MaxMesVisible, -1 )
-			VAR DeudaAhora =
-			    CALCULATE ( [Deuda Total], fact_art[periodo_date] = MaxMesVisible )
-			VAR DeudaAntes =
-			    CALCULATE ( [Deuda Total], fact_art[periodo_date] = MesAnterior )
-			RETURN
-			DIVIDE ( DeudaAhora - DeudaAntes, DeudaAntes )
-		lineageTag: 036a486b-469e-4950-b733-7c8ab677479a
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
 	measure 'Contratos que entran en deuda (período, cartera)' =
 			
@@ -307,93 +227,6 @@ table '⚙ Medidas'
 		displayFolder: 04_Variaciones
 		lineageTag: 215af4d3-0e25-4e89-ae2d-d1a0fa29edb2
 
-	measure 'Tasa contratos deuda' =
-			
-			VAR MaxMesVisible =
-			    CALCULATE ( MAX ( fact_art[periodo_date] ), ALLSELECTED ( dim_date ) )
-			VAR MesAnterior = EDATE ( MaxMesVisible, -1 )
-			VAR RateNow =
-			    CALCULATE ( [Tasa contratos con deuda (%)], fact_art[periodo_date] = MaxMesVisible )
-			VAR RatePrev =
-			    CALCULATE ( [Tasa contratos con deuda (%)], fact_art[periodo_date] = MesAnterior )
-			VAR Delta = RateNow - RatePrev
-			RETURN
-			IF (
-			    ISBLANK ( RateNow ),
-			    BLANK(),
-			    (IF ( Delta > 0, "▲ ", IF ( Delta < 0, "▼ ", "▪ "))) & FORMAT ( RateNow, "0.0 %" )
-			)
-		lineageTag: 154a8ae5-f379-4b4d-8692-636ebea13489
-
-	measure 'Color Tasa c/deuda (último período)' =
-			
-			VAR Delta = [MoM Tasa contratos con deuda (%)]
-			RETURN
-			IF (
-			    ISBLANK ( Delta ),
-			    "#808080",
-			    IF ( Delta < 0, "#16a34a", "#dc2626" )
-			)
-		displayFolder: 06_Color
-		lineageTag: acf12c06-5b6c-4a6c-827a-010419dcee45
-
-	measure 'Color por tamaño (scatter)' =
-			
-			VAR Size = [Contratos con deuda (último período)]
-			VAR Tabla =
-			    SUMMARIZE (
-			        ALLSELECTED ( dim_deals[aseguradora_enviada_lookup] ),
-			        dim_deals[aseguradora_enviada_lookup],
-			        "Size", [Contratos con deuda (último período)]
-			    )
-			VAR P33 = PERCENTILEX.INC ( Tabla, [Size], 0.33 )
-			VAR P66 = PERCENTILEX.INC ( Tabla, [Size], 0.66 )
-			RETURN
-			IF (
-			    ISBLANK ( Size ),
-			    BLANK(),
-			    IF ( Size < P33, "#22c55e", IF ( Size < P66, "#f59e0b", "#ef4444" ) )  -- verde / ámbar / rojo
-			)
-		displayFolder: 06_Color
-		lineageTag: 2c5417dc-548f-4319-95e1-9687594be53c
-
-	measure 'Deals anulados (por período)' =
-			
-			VAR Mes = SELECTEDVALUE ( dim_date[InicioMes] )
-			RETURN
-			IF (
-			    ISBLANK ( Mes ),
-			    BLANK(),
-			    CALCULATE (
-			        DISTINCTCOUNT ( dim_deals[numero_de_contrato] ),
-			        KEEPFILTERS ( dim_deals[cuenta_perdida] <> "Vigente" ),
-			        FILTER (
-			            ALL ( dim_deals[fecha_anulaci_n] ),
-			            NOT ISBLANK ( dim_deals[fecha_anulaci_n] )
-			                && DATE ( YEAR ( dim_deals[fecha_anulaci_n] ), MONTH ( dim_deals[fecha_anulaci_n] ), 1 ) = Mes
-			        )
-			    )
-			)
-		formatString: 0
-		lineageTag: c02fc14c-4331-40a7-a59a-71a50b65540c
-
-	measure 'Deals anulados (por período, motivo)' =
-			
-			VAR InicioMes = SELECTEDVALUE( dim_date[InicioMes] )
-			RETURN
-			IF (
-			    ISBLANK( InicioMes ),
-			    BLANK(),
-			    CALCULATE (
-			        DISTINCTCOUNT ( dim_deals_hist[zoho_id] ),                -- cuenta cada deal una sola vez
-			        KEEPFILTERS ( dim_deals_hist[cuenta_perdida] <> "Vigente" ),
-			        dim_deals_hist[periodo_anulacion] >= InicioMes,
-			        dim_deals_hist[periodo_anulacion] <  EDATE( InicioMes, 1 ) -- dentro del mes
-			    )
-			)
-		formatString: 0
-		lineageTag: 38ab8dc4-e035-4b54-a4c2-885ad1272f43
-
 	measure 'Anulados (períodos visibles)' =
 			
 			VAR MinMes = CALCULATE ( MIN ( dim_date[InicioMes] ), ALLSELECTED ( dim_date ) )
@@ -422,6 +255,7 @@ table '⚙ Medidas'
 			    KEEPFILTERS( VALUES(dim_deals_hist[cuenta_perdida]) )   -- respeta la leyenda
 			)
 		formatString: 0
+		displayFolder: 01_Series
 		lineageTag: ba4425eb-3c78-45d4-9746-d5f16761178f
 
 	measure 'Anulados – Falta de pago (períodos visibles)' =
@@ -450,14 +284,6 @@ table '⚙ Medidas'
 		lineageTag: b7f0e2da-b543-4db1-9067-07270a9fcf3d
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'Participación deuda (último período, cuenta) %' =
-			
-			VAR DeudaCuenta = [Deuda (último período, cuenta)]
-			VAR DeudaTotal  = [Deuda Total (último período)]
-			RETURN DIVIDE( DeudaCuenta, DeudaTotal )
-		formatString: 0.0\ %;-0.0\ %;0.0\ %
-		lineageTag: fefbf53c-98ae-4f5f-8151-48fdc8da148a
 
 	measure 'Pareto % acumulado (cuenta)' =
 			
@@ -493,14 +319,6 @@ table '⚙ Medidas'
 			VAR q = [Q promedio (último período, cuenta)]
 			RETURN IF( NOT ISBLANK(q) && q >= 3, "Intimado", "No intimado" )
 		lineageTag: a72ebdaa-c78a-4c10-ade4-d56a03761124
-
-	measure 'Color por intimación' =
-			
-			VAR q = [Q promedio (último período, cuenta)]
-			RETURN
-			IF ( NOT ISBLANK(q) && q >= 3, "#E81123",  "#20284E" )   -- rojo / azul
-		displayFolder: 06_Color
-		lineageTag: f8b978ca-891e-4705-8db4-269ab46ebdf8
 
 	measure 'Cartera vigente (por período)' = ```
 			
@@ -555,64 +373,6 @@ table '⚙ Medidas'
 		displayFolder: 02_Wrappers_UltimoPeriodo
 		lineageTag: 20ca234e-2f3d-4679-868d-c54547ec185f
 
-	measure 'Tasa c/deuda (%) (último)' =
-			
-			VAR UltIni =
-			    MAXX ( ALLSELECTED ( 'dim_date'[InicioMes] ), 'dim_date'[InicioMes] )
-			RETURN
-			CALCULATE (
-			    [Tasa contratos con deuda (%)],
-			    'dim_date'[InicioMes] = UltIni
-			)
-		formatString: 0
-		lineageTag: aef1fe21-136f-44ae-84c8-49cbc5ea737b
-
-	measure 'Tasa c/deuda (%) (previo)' =
-			
-			VAR UltIni  =
-			    MAXX ( ALLSELECTED ( 'dim_date'[InicioMes] ), 'dim_date'[InicioMes] )
-			VAR PrevIni = EDATE ( UltIni, -1 )
-			RETURN
-			CALCULATE (
-			    [Tasa contratos con deuda (%)],
-			    'dim_date'[InicioMes] = PrevIni
-			)
-		lineageTag: 44955d77-b582-4ec9-bbfc-716da02f9d8d
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'Tasa contratos con deuda (%) (período anterior)' =
-			
-			VAR Ultimo =
-			    MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
-			VAR Anterior = EDATE ( Ultimo, -1 )
-			RETURN
-			CALCULATE (
-			    [Tasa contratos con deuda (%)],
-			    KEEPFILTERS ( dim_date[InicioMes] = Anterior )
-			)
-		lineageTag: 59aadeaf-796b-4104-a148-8429a56c20d5
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'MoM Tasa contratos con deuda (%)' =
-			
-			VAR Curr = [Tasa contratos con deuda (%) (último período)]
-			VAR Prev = [Tasa contratos con deuda (%) (período anterior)]
-			RETURN DIVIDE ( Curr - Prev, Prev )
-		lineageTag: e70d9fec-ba60-4f50-b787-fadc68d9bc0c
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'Δ Tasa contratos con deuda (pp)' =
-			
-			VAR Curr = [Tasa contratos con deuda (%) (último período)]
-			VAR Prev = [Tasa contratos con deuda (%) (período anterior)]
-			RETURN Curr - Prev
-		lineageTag: 8d7ef574-d4bd-4fd5-9069-c5360d7e496b
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
 	measure 'Tasa c/deuda (%) – meta (período anterior)' =
 			
 			VAR Ult = MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
@@ -642,20 +402,6 @@ table '⚙ Medidas'
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
-	measure 'MoM Deuda mensual – meta (período anterior)' =
-			
-			VAR Ult = MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
-			VAR Prev = EDATE ( Ult, -1 )
-			RETURN
-			CALCULATE (
-			    [MoM Deuda mensual],
-			    REMOVEFILTERS ( dim_date ),
-			    TREATAS ( { Prev }, dim_date[InicioMes] )
-			)
-		formatString: 0.00\ %;-0.00\ %;0.00\ %
-		displayFolder: 03_Metas_vs_t-1
-		lineageTag: 3759155a-6f36-4a19-9ab9-79f1102dd3ee
-
 	measure 'Contratos con deuda – meta (período anterior)' =
 			
 			VAR Ult = MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
@@ -675,25 +421,13 @@ table '⚙ Medidas'
 		displayFolder: 04_Variaciones
 		lineageTag: adfa06b9-4085-4d94-b97a-e16954bcca8d
 
-	measure 'Deuda Total (período anterior)' =
-			
-			CALCULATE ( [Deuda Total],
-			    REMOVEFILTERS ( dim_date ),
-			    TREATAS ( { EDATE ( MAX ( dim_date[InicioMes] ), -1 ) }, dim_date[InicioMes] )
-			)
-		displayFolder: 04_Variaciones
-		lineageTag: bd1045c5-f564-411f-b583-544bf8a2cc6a
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
 	measure 'Delta Deuda ($)' =
 			
 			VAR Prev = [Deuda Total (período anterior)]
 			RETURN [Deuda Total] - Prev
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
 		displayFolder: 04_Variaciones
 		lineageTag: 8fb9f3fd-adf8-48ae-bda7-0249f1d193c1
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
 	measure 'Tasa contratos con deuda (%) (último período, por aseguradora)' =
 			
@@ -737,50 +471,8 @@ table '⚙ Medidas'
 			
 			DIVIDE ( [Anulados – Falta de pago (mes)], [Anulados (mes)] )
 		formatString: 0.00\ %;-0.00\ %;0.00\ %
-		displayFolder: 04_Variaciones
+		displayFolder: 01_Series
 		lineageTag: 00c24964-71e7-4ad9-8385-a6fd3c5f8c73
-
-	measure 'Tasa anulados FP (%) (último período)' =
-			
-			VAR Ult = MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
-			RETURN
-			CALCULATE ( [Tasa anulados por falta de pago (%)],
-			            KEEPFILTERS ( dim_date[InicioMes] = Ult ) )
-		lineageTag: 734616bf-c442-4dc5-a9f9-4d73a794c28e
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'Tasa anulados FP (%) – meta (período anterior)' =
-			
-			VAR Ult = MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
-			VAR Prev = EDATE ( Ult, -1 )
-			RETURN
-			CALCULATE ( [Tasa anulados por falta de pago (%)],
-			            REMOVEFILTERS ( dim_date ),
-			            TREATAS ( { Prev }, dim_date[InicioMes] ) )
-		lineageTag: c445c678-ed5d-409f-ae90-5c6aa4420b79
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'MoM Tasa anulados FP (%)' =
-			
-			VAR F  = MAX ( dim_date[InicioMes])
-			VAR T  = [Tasa anulados por falta de pago (%)]
-			VAR T1 = CALCULATE ( [Tasa anulados por falta de pago (%)],
-			                     REMOVEFILTERS ( dim_date ),
-			                     TREATAS ( { EDATE ( F, -1 ) }, dim_date[InicioMes] ) )
-			RETURN T - T1
-		displayFolder: 04_Variaciones
-		lineageTag: f813870e-4b8f-4b6c-a9f0-2e828a47b53c
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
-
-	measure 'Color Tasa anulados FP (último período)' =
-			
-			VAR d = [MoM Tasa anulados FP (%)]
-			RETURN IF ( ISBLANK(d), "#808080", IF ( d < 0, "#16a34a", "#dc2626" ) )
-		displayFolder: 06_Color
-		lineageTag: e5d456ed-80d7-450c-b245-bfcfc0a0a84a
 
 	measure 'Anulados (mes, por motivo)' =
 			
@@ -808,6 +500,7 @@ table '⚙ Medidas'
 			
 			RANKX ( ALLSELECTED ( dim_accounts[account_name] ), [Deuda (último período, cuenta)], , DESC, DENSE )
 		formatString: 0
+		displayFolder: 90_Utilidades
 		lineageTag: fef48da0-64ba-4349-93e4-790e8766752d
 
 	measure 'Pareto % individual (cuenta)' =
@@ -827,7 +520,60 @@ table '⚙ Medidas'
 			
 			MAXX ( ALLSELECTED ( dim_date[InicioMes] ), dim_date[InicioMes] )
 		formatString: General Date
+		displayFolder: 90_Utilidades
 		lineageTag: ab314de0-675b-460b-9aa3-b9d4e5565920
+
+	measure 'Deuda Total (período anterior)' =
+			
+			CALCULATE (
+			    [Deuda Total],
+			    REMOVEFILTERS ( dim_date ),
+			    TREATAS ( { EDATE ( MAX ( dim_date[InicioMes] ), -1 ) }, dim_date[InicioMes] )
+			)
+		displayFolder: 03_Metas_vs_t-1
+		lineageTag: e080fa92-2585-40f8-9bb8-4ccec87ad922
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Contrato objetivo (consulta)' =
+			
+			VAR C_sel = SELECTEDVALUE( dim_deals[contrato] )
+			VAR Ult   = MAXX( ALLSELECTED(dim_date[InicioMes]), dim_date[InicioMes] )
+			VAR C_deuda =
+			    MAXX (
+			        TOPN (
+			            1,
+			            FILTER (
+			                SUMMARIZE( ALL(fact_art), dim_deals[contrato] ),
+			                CALCULATE( SUM(fact_art[deuda_total]),
+			                           dim_date[InicioMes]=Ult ) > 0
+			            ),
+			            CALCULATE( SUM(fact_art[deuda_total]), dim_date[InicioMes]=Ult ), DESC
+			        ),
+			        dim_deals[contrato]
+			    )
+			VAR C_vig =
+			    CALCULATE (
+			        MAX( dim_deals[contrato] ),
+			        FILTER (
+			            ALL(dim_deals),
+			            dim_deals[stage]="Cerrado (ganado)"
+			            && COALESCE(dim_deals[inicio_de_vigencia],DATE(1900,1,1))<=Ult
+			            && ( ISBLANK(dim_deals[fecha_anulacion_final]) || dim_deals[fecha_anulacion_final]>Ult )
+			        )
+			    )
+			VAR C_ult =
+			    CALCULATE (
+			        MAX( dim_deals[contrato] ),
+			        FILTER( ALL(dim_deals), dim_deals[stage]="Cerrado (ganado)" )
+			    )
+			RETURN COALESCE( C_sel, C_deuda, C_vig, C_ult )
+		lineageTag: 5ea97599-5a51-4b77-af06-15e36060c1b7
+
+	measure 'Color por intimación' =
+			
+			IF ( [Contratos intimados] > 0, "#dc2626", "#16a34a" )
+		lineageTag: a92d8b98-d82d-4384-bca4-c62eb4113df9
 
 	column dummy
 		dataType: int64

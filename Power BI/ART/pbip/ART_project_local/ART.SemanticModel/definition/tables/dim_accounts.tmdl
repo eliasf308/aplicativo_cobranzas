@@ -63,13 +63,12 @@ table dim_accounts
 
 	column aporte_lrt
 		dataType: double
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
 		lineageTag: f643cf21-01cd-44e9-b3fe-5333146cd7de
 		summarizeBy: sum
 		sourceColumn: aporte_lrt
 
 		annotation SummarizationSetBy = Automatic
-
-		annotation PBI_FormatHint = {"isGeneralNumber":true}
 
 	column costo_mensual
 		dataType: double
