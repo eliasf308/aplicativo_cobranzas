@@ -1,0 +1,76 @@
+
+
+TaskName       : ZohoAccountsDaily
+TaskPath       : \
+State          : Ready
+Enabled        : True
+Author         : 
+UserId         : Admin
+RunLevel       : Highest
+LastRunTime    : 15/10/2025 15:38:53
+NextRunTime    : 12/11/2025 10:00:00
+LastTaskResult : 0
+Actions        : C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas\sync\run_accounts_incremental.bat
+WorkingDir     : 
+Triggers       : MSFT_TaskDailyTrigger
+
+
+
+
+
+
+TaskName       : ZohoContactsDaily
+TaskPath       : \
+State          : Ready
+Enabled        : True
+Author         : 
+UserId         : Admin
+RunLevel       : Highest
+LastRunTime    : 15/10/2025 15:40:09
+NextRunTime    : 12/11/2025 10:15:00
+LastTaskResult : 0
+Actions        : C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas\sync\run_contacts_incremental.bat
+WorkingDir     : 
+Triggers       : MSFT_TaskDailyTrigger
+
+
+
+
+
+
+TaskName       : ZohoDealsDaily
+TaskPath       : \
+State          : Disabled
+Enabled        : False
+Author         : LAPTOP-QOGID77T\Admin
+UserId         : Promecor
+RunLevel       : Highest
+LastRunTime    : 15/10/2025 15:54:19
+NextRunTime    : 12/11/2025 10:30:00
+LastTaskResult : 0
+Actions        : C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas\sync\run_deals_incremental.bat
+WorkingDir     : 
+Triggers       : MSFT_TaskDailyTrigger
+
+
+
+
+
+
+TaskName       : ZohoDealsIncremental
+TaskPath       : \
+State          : Ready
+Enabled        : True
+Author         : LAPTOP-QOGID77T\Promecor
+UserId         : Promecor
+RunLevel       : Limited
+LastRunTime    : 11/11/2025 09:57:01
+NextRunTime    : 11/11/2025 11:57:00
+LastTaskResult : 0
+Actions        : C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas\sync\run_deals_incremental.bat
+WorkingDir     : 
+Triggers       : MSFT_TaskTimeTrigger
+
+
+
+

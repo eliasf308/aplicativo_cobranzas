@@ -2,21 +2,29 @@
 """
 Incremental sync de Zoho CRM Contacts -> Postgres (public.crm_contacts)
 
-- Lista contactos modificados desde el último cursor (crm_sync_state.module='Contacts')
-  usando `criteria=(Modified_Time:after:...)`.
-- Expande por IDs trayendo **todos** los fields (settings/fields) respetando el límite de 50
-  (divide en chunks y fusiona por id).
-- Aplana al esquema existente; guarda `raw_json` si existe.
-- Para columnas boolean que Zoho omite cuando son FALSE, graba False (evita NULLs artificiales).
-- Upsert con ON CONFLICT ("zoho_id") DO UPDATE y `synced_at = now()` si la columna existe.
+Robustez agregada:
+- Sesión HTTP con retry/backoff (429/5xx + errores de conexión/lectura).
+- Auto-refresh del access token si aparece 401 INVALID_TOKEN en mitad de la corrida.
+- Refresh proactivo del token cada 50 min.
+- Timeouts diferenciados (connect/read).
+- Tamaño de lote de IDs configurable (.env ZOHO_BULK_IDS_CHUNK; default 40).
+- Connection: close para evitar sockets colgados.
+
+Cursor:
+- Usa crm_sync_state(module='Contacts', last_modified). Si no existe, toma MAX(modified_time) de la tabla o 10 años atrás.
 """
 
 from __future__ import annotations
 import json
+import time
+import random
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, timezone
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 import psycopg2
 import psycopg2.extras as pgx
 from dotenv import dotenv_values
@@ -25,13 +33,14 @@ TABLE_SCHEMA = "public"
 TABLE_BASENAME = "crm_contacts"
 TABLE_NAME = f"{TABLE_SCHEMA}.{TABLE_BASENAME}"
 
-PER_PAGE = 200               # tamaño de página Zoho (listado)
-BULK_IDS_CHUNK = 60          # menor a 100 para robustez
-UPSERT_CHUNK = 200           # batch de upsert a DB
-SESSION_TIMEOUT = 90
-SAFE_LIST_FIELDS = ["id", "Modified_Time"]  # para listar con criterio
+PER_PAGE = 200                 # tamaño de página (listado incremental)
+UPSERT_CHUNK = 200             # batch de upsert a DB
+SESSION_CONNECT_TIMEOUT = 10   # segundos
+SESSION_READ_TIMEOUT = 60      # segundos
+SAFE_LIST_FIELDS = ["id", "Modified_Time"]
+DEF_TIMEZONE = timezone.utc
 
-# ---------------- Utils ----------------
+# ---------------- Utils / Entorno ----------------
 
 def load_env() -> Dict[str, str]:
     env = dotenv_values('.env')
@@ -44,17 +53,83 @@ def load_env() -> Dict[str, str]:
         raise RuntimeError(f"Faltan variables en .env: {', '.join(missing)}")
     return env
 
-def get_access_token(env: Dict[str, str]) -> str:
-    url = "https://accounts.zoho.com/oauth/v2/token"
+def build_session() -> requests.Session:
+    retry = Retry(
+        total=5, connect=5, read=5,
+        backoff_factor=1.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=frozenset(["GET", "POST"]),
+        raise_on_status=False,
+    )
+    s = requests.Session()
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=20, pool_maxsize=20)
+    s.mount("https://", adapter)
+    s.mount("http://", adapter)
+    s.headers.update({"Connection": "close", "Accept": "application/json"})
+    return s
+
+def _oauth_accounts_domain() -> str:
+    # Si necesitás .eu/.in, cambiá acá. Para US: accounts.zoho.com
+    return "https://accounts.zoho.com"
+
+def get_access_token_raw(env: Dict[str, str], session: requests.Session) -> str:
+    url = f"{_oauth_accounts_domain()}/oauth/v2/token"
     data = {
         "grant_type": "refresh_token",
         "client_id": env["ZOHO_SELF_CLIENT_ID"],
         "client_secret": env["ZOHO_SELF_CLIENT_SECRET"],
         "refresh_token": env["ZOHO_REFRESH_TOKEN"],
     }
-    r = requests.post(url, data=data, timeout=SESSION_TIMEOUT)
+    r = session.post(url, data=data, timeout=(SESSION_CONNECT_TIMEOUT, SESSION_READ_TIMEOUT))
     r.raise_for_status()
     return r.json()["access_token"]
+
+class TokenManager:
+    """Gestiona token, refresca ante 401 o cada ~50 min."""
+    def __init__(self, env: Dict[str,str], session: requests.Session):
+        self.env = env
+        self.session = session
+        self._token: Optional[str] = None
+        self._issued_at: Optional[float] = None
+
+    def refresh(self) -> str:
+        self._token = get_access_token_raw(self.env, self.session)
+        self._issued_at = time.time()
+        print("[INFO] Access token refrescado.")
+        return self._token
+
+    def get(self) -> str:
+        if not self._token or not self._issued_at:
+            return self.refresh()
+        # refresh proactivo a los 50 min
+        if (time.time() - self._issued_at) > 50 * 60:
+            return self.refresh()
+        return self._token
+
+# Helper: GET con auto-refresh si 401 INVALID_TOKEN
+def zoho_get(url: str, params: Dict[str,Any], tm: TokenManager, session: requests.Session,
+             timeout=(SESSION_CONNECT_TIMEOUT, SESSION_READ_TIMEOUT), extra_headers: Optional[Dict[str,str]]=None,
+             retry_on_401: int = 1) -> requests.Response:
+    for attempt in range(retry_on_401 + 1):
+        headers = {"Authorization": f"Zoho-oauthtoken {tm.get()}", "Accept": "application/json"}
+        if extra_headers: headers.update(extra_headers)
+        r = session.get(url, headers=headers, params=params, timeout=timeout)
+        if r.status_code == 401:
+            code = None
+            try:
+                js = r.json()
+                code = js.get("code")
+            except Exception:
+                pass
+            body_lower = (r.text or "").lower()
+            if code in ("INVALID_TOKEN", "AUTHENTICATION_FAILURE") or "invalid oauth token" in body_lower:
+                print("[WARN] 401 INVALID_TOKEN detectado. Intentando refresh de token...")
+                tm.refresh()
+                if attempt < retry_on_401:
+                    continue
+        r.raise_for_status()
+        return r
+    return r
 
 # ---------------- DB helpers ----------------
 
@@ -81,10 +156,15 @@ def get_cursor(conn) -> Optional[datetime]:
         cur.execute("SELECT last_modified FROM public.crm_sync_state WHERE module='Contacts'")
         r = cur.fetchone()
         if r and r[0]:
-            return r[0]
+            dt = r[0]
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=DEF_TIMEZONE)
+            return dt
     return None
 
 def set_cursor(conn, new_dt: datetime):
+    if new_dt.tzinfo is None:
+        new_dt = new_dt.replace(tzinfo=DEF_TIMEZONE)
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -102,23 +182,19 @@ def set_cursor(conn, new_dt: datetime):
 
 _FIELDS_CACHE: Optional[List[str]] = None
 
-def get_contacts_api_fields(env, token) -> List[str]:
+def get_contacts_api_fields(env, tm: TokenManager, session: requests.Session) -> List[str]:
     global _FIELDS_CACHE
     if _FIELDS_CACHE is not None:
         return _FIELDS_CACHE
     url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/settings/fields"
-    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
     params = {"module": "Contacts"}
-    r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
-    r.raise_for_status()
+    r = zoho_get(url, params, tm, session)
     j = r.json() or {}
     _FIELDS_CACHE = [f.get("api_name") for f in j.get("fields", []) if f.get("api_name")]
     return _FIELDS_CACHE
 
-def fetch_page_ids_since(env, token, since_iso: str, page_token: Optional[str]):
+def fetch_page_ids_since(env, tm: TokenManager, since_iso: str, page_token: Optional[str], session: requests.Session):
     url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Contacts"
-    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
-    # criteria: Modified_Time >= since
     params = {
         "fields": ",".join(SAFE_LIST_FIELDS),
         "criteria": f"(Modified_Time:after:{since_iso})",
@@ -126,10 +202,9 @@ def fetch_page_ids_since(env, token, since_iso: str, page_token: Optional[str]):
     }
     if page_token:
         params["page_token"] = page_token
-    r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
+    r = zoho_get(url, params, tm, session)
     if r.status_code == 204:
         return [], None, False
-    r.raise_for_status()
     js = r.json() or {}
     data = js.get("data") or []
     info = js.get("info") or {}
@@ -137,10 +212,11 @@ def fetch_page_ids_since(env, token, since_iso: str, page_token: Optional[str]):
     next_token = info.get("next_page_token") or None
     return data, next_token, more
 
-def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
+def fetch_by_ids_all_fields(env, tm: TokenManager, ids: List[str], session: requests.Session) -> List[Dict[str, Any]]:
     if not ids:
         return []
-    fields_all = get_contacts_api_fields(env, token) or []
+
+    fields_all = get_contacts_api_fields(env, tm, session) or []
     base_extra = ["Owner", "Full_Name", "Last_Name", "Email", "Created_Time", "Modified_Time", "Account_Name"]
 
     def dedup(seq):
@@ -151,6 +227,8 @@ def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
         return out
 
     fields_no_base = [f for f in fields_all if f not in ("id",) + tuple(base_extra)]
+
+    # chunks de fields (máx 50 por request, incluido "id")
     chunks: List[List[str]] = []
     first_room = 50 - 1 - len(base_extra)
     first_chunk_rest = fields_no_base[:max(0, first_room)]
@@ -162,25 +240,38 @@ def fetch_by_ids_all_fields(env, token, ids: List[str]) -> List[Dict[str, Any]]:
         idx += 49
 
     url = f"{env['ZOHO_API_DOMAIN']}/crm/v5/Contacts"
-    headers = {"Authorization": f"Zoho-oauthtoken {token}"}
-
     merged: Dict[str, Dict[str, Any]] = {}
+
     for fields in chunks:
         params = {"ids": ",".join(ids), "fields": ",".join(fields)}
-        r = requests.get(url, headers=headers, params=params, timeout=SESSION_TIMEOUT)
-        if r.status_code >= 400:
-            print(f"[ERROR] fetch_by_ids_all_fields {r.status_code}: {r.text[:800]}")
-            r.raise_for_status()
-        for rec in (r.json().get("data") or []):
-            rid = str(rec.get("id")) if rec else None
-            if not rid:
-                continue
-            if rid not in merged:
-                merged[rid] = rec
-            else:
-                for k, v in rec.items():
-                    if v is not None and (k not in merged[rid] or merged[rid][k] in (None, "", [])):
-                        merged[rid][k] = v
+
+        last_exc = None
+        for attempt in range(1, 4):
+            try:
+                # zoho_get maneja 401 con refresh automático
+                r = zoho_get(url, params, tm, session)
+                js = r.json()
+                data = js.get("data") or []
+                for rec in data:
+                    rid = str(rec.get("id")) if rec else None
+                    if not rid:
+                        continue
+                    if rid not in merged:
+                        merged[rid] = rec
+                    else:
+                        for k, v in rec.items():
+                            if v is not None and (k not in merged[rid] or merged[rid][k] in (None, "", [])):
+                                merged[rid][k] = v
+                break
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.ReadTimeout) as e:
+                last_exc = e
+                sleep = round(1.5 ** attempt + random.uniform(0, 1.5), 2)
+                print(f"[WARN] Grupo IDs {ids[0]}.. reintento {attempt}/3 por {e}. Esperando {sleep}s...")
+                time.sleep(sleep)
+        else:
+            raise last_exc
+
     return list(merged.values())
 
 # ---------------- Flatten dinámico ----------------
@@ -240,7 +331,7 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
         _set("owner_name", owner.get("name"))
         _set("owner_email", owner.get("email"))
 
-    # Account_Name (lookup) puede venir dict o string
+    # Account_Name (lookup)
     acc = record.get("Account_Name")
     if isinstance(acc, dict):
         _set("account_id", acc.get("id"))
@@ -248,7 +339,7 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
     elif isinstance(acc, str):
         _set("account_name", acc)
 
-    # Full_Name / Last_Name / Email si existen como columnas
+    # Full_Name / Last_Name / Email
     if "Full_Name" in record:
         _set("full_name", record.get("Full_Name"))
     if "Last_Name" in record:
@@ -256,13 +347,12 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
     if "Email" in record:
         _set("email", record.get("Email"))
 
-    # resto de fields -> mapeo generico
+    # resto de fields
     for k, v in record.items():
         if k in ("id", "Owner", "Account_Name", "Full_Name", "Last_Name", "Email", "Created_Time", "Modified_Time"):
             continue
         base_col = norm_col(k)
 
-        # lookups
         if isinstance(v, dict) and ("id" in v or "name" in v or "email" in v):
             _set(f"{base_col}_id", v.get("id"))
             _set(f"{base_col}_name", v.get("name"))
@@ -271,7 +361,6 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
                 _set(base_col, v.get("name") or v.get("id"))
             continue
 
-        # listas
         if isinstance(v, list):
             if base_col in existing_cols:
                 _set(base_col, v)
@@ -280,20 +369,16 @@ def flatten_contact(record: Dict[str, Any], existing_types: Dict[str, str]) -> D
                 _set(f"{base_col}_names", "|".join([str(x.get("name") or "") for x in v]))
             continue
 
-        # dict genérico
         if isinstance(v, dict):
             if base_col in existing_cols:
                 _set(base_col, v)
             continue
 
-        # primitivos
         _set(base_col, v)
 
-    # raw_json completo
     if "raw_json" in existing_cols:
         _set("raw_json", record)
 
-    # default FALSE para booleanos omitidos
     for col, t in existing_types.items():
         if col not in row and t in ("bool", "boolean"):
             row[col] = False
@@ -350,25 +435,31 @@ def upsert_rows(conn, rows: List[Dict[str, Any]], existing_cols: set):
 
 def main():
     env = load_env()
-    token = get_access_token(env)
+    session = build_session()
+    tm = TokenManager(env, session)  # gestiona token con auto-refresh
 
     with pg_connect(env) as conn:
         conn.autocommit = False
         existing_types = get_existing_columns(conn)
         existing_cols = set(existing_types.keys())
 
-        # Cursor con pequeño solapamiento para no perder cambios
         cursor_dt = get_cursor(conn)
         if cursor_dt is None:
-            # fallback: desde lo que tengamos en tabla, sino muy atrás
             with conn.cursor() as cur:
                 cur.execute(f"SELECT max(modified_time) FROM {TABLE_NAME}")
                 r = cur.fetchone()
-                cursor_dt = r[0] if r and r[0] else datetime.now(timezone.utc) - timedelta(days=3650)
-        start_dt = cursor_dt - timedelta(minutes=5)
-        # Zoho espera offset de zona; usamos -03:00 (AR) para coherencia con tus datos
+                cursor_dt = r[0].replace(tzinfo=DEF_TIMEZONE) if r and r[0] else datetime.now(DEF_TIMEZONE) - timedelta(days=3650)
+
+        start_dt = (cursor_dt - timedelta(minutes=5))
         since_iso = start_dt.astimezone().isoformat(timespec="seconds")
         print(f"Iniciando incremental Contacts desde: {since_iso}")
+
+        try:
+            bulk_ids_chunk = int(env.get("ZOHO_BULK_IDS_CHUNK", "40"))
+            if bulk_ids_chunk < 10 or bulk_ids_chunk > 100:
+                bulk_ids_chunk = 40
+        except Exception:
+            bulk_ids_chunk = 40
 
         total = 0
         page_token = None
@@ -376,7 +467,7 @@ def main():
         max_seen_dt: Optional[datetime] = cursor_dt
 
         while more:
-            page, next_token, more = fetch_page_ids_since(env, token, since_iso, page_token)
+            page, next_token, more = fetch_page_ids_since(env, tm, since_iso, page_token, session)
             page_token = next_token
             if not page:
                 break
@@ -390,13 +481,15 @@ def main():
                 if mt:
                     try:
                         dt = datetime.fromisoformat(mt)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=DEF_TIMEZONE)
                     except Exception:
                         dt = None
                     if dt and (max_seen_dt is None or dt > max_seen_dt):
                         max_seen_dt = dt
 
-            for group in chunked(ids, BULK_IDS_CHUNK):
-                expanded = fetch_by_ids_all_fields(env, token, group)
+            for group in chunked(ids, bulk_ids_chunk):
+                expanded = fetch_by_ids_all_fields(env, tm, group, session)
                 rows = [flatten_contact(rec, existing_types) for rec in expanded]
                 upsert_rows(conn, rows, existing_cols)
                 total += len(rows)

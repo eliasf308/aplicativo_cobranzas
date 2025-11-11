@@ -1,9 +1,48 @@
 @echo off
-cd /d "C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas"
+setlocal EnableExtensions EnableDelayedExpansion
+chcp 65001 >NUL
 
-if not exist "logs" mkdir "logs"
+REM --- Paths del proyecto ---
+set "PROJ=C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas"
+set "PY=%PROJ%\env\Scripts\python.exe"
+set "SCRIPT=%PROJ%\sync\sync_deals_incremental.py"
+set "LOGDIR=%PROJ%\logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
 
-for /f %%i in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd_HHmmss')"') do set STAMP=%%i
+REM --- Timestamp robusto ---
+for /f %%I in ('powershell -NoProfile -Command "(Get-Date -Format yyyyMMdd_HHmmss)"') do set "TS=%%I"
+set "LOG=%LOGDIR%\deals_incremental_%TS%.log"
 
-"C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas\env\Scripts\python.exe" -u sync\sync_deals_incremental.py ^
-  >> "logs\deals_incremental_%STAMP%.log" 2>&1
+REM --- Single instance lock ---
+set "LOCK=%LOGDIR%\deals.lock"
+if exist "%LOCK%" (
+  echo [%date% %time%] Otro proceso de Deals ya está en curso. Saliendo...>>"%LOG%"
+  exit /b 0
+)
+type NUL > "%LOCK%"
+
+pushd "%PROJ%" >NUL
+echo [%date% %time%] Iniciando Deals...>"%LOG%"
+echo PY="%PY%" >>"%LOG%"
+echo SCRIPT="%SCRIPT%" >>"%LOG%"
+
+"%PY%" "%SCRIPT%" >>"%LOG%" 2>&1
+set "EC=%ERRORLEVEL%"
+
+if not "%EC%"=="0" (
+  echo [%date% %time%] Fallo ExitCode=%EC%. Reintento en 60s...>>"%LOG%"
+  timeout /t 60 /nobreak >NUL
+  "%PY%" "%SCRIPT%" >>"%LOG%" 2>&1
+  set "EC=%ERRORLEVEL%"
+)
+
+if not defined EC set "EC=0"
+echo [%date% %time%] Finalizado Deals. ExitCode=!EC!>>"%LOG%"
+
+popd >NUL
+del "%LOCK%" >NUL 2>&1
+
+REM --- Rotación de logs (>30 días)
+forfiles /P "%LOGDIR%" /M "deals_incremental_*.log" /D -30 /C "cmd /c del @file" 2>NUL
+
+exit /b !EC!

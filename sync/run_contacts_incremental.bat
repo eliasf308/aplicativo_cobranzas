@@ -1,42 +1,48 @@
 @echo off
-setlocal enableextensions enabledelayedexpansion
+setlocal EnableExtensions EnableDelayedExpansion
+chcp 65001 >NUL
 
-rem === Config ===
-set "REPO_DIR=C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas"
-set "VENV_ACT=%REPO_DIR%\env\Scripts\activate.bat"
-set "PY_SCRIPT=%REPO_DIR%\sync\sync_contacts_incremental.py"
-set "LOG_DIR=%REPO_DIR%\logs"
-set "RETRIES=3"
-set "SLEEP_SECS=60"
+REM --- Paths del proyecto ---
+set "PROJ=C:\Users\Promecor\Documents\Promecor\aplicativo_cobranzas"
+set "PY=%PROJ%\env\Scripts\python.exe"
+set "SCRIPT=%PROJ%\sync\sync_contacts_incremental.py"
+set "LOGDIR=%PROJ%\logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
 
-rem === Timestamp para el log ===
-for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TS=%%i"
+REM --- Timestamp robusto ---
+for /f %%I in ('powershell -NoProfile -Command "(Get-Date -Format yyyyMMdd_HHmmss)"') do set "TS=%%I"
+set "LOG=%LOGDIR%\contacts_incremental_%TS%.log"
 
-if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
-set "LOGFILE=%LOG_DIR%\contacts_incremental_%TS%.log"
+REM --- Single instance lock ---
+set "LOCK=%LOGDIR%\contacts.lock"
+if exist "%LOCK%" (
+  echo [%date% %time%] Otro proceso de Contacts ya está en curso. Saliendo...>>"%LOG%"
+  exit /b 0
+)
+type NUL > "%LOCK%"
 
-echo [%date% %time%] Iniciando incremental Contacts... > "%LOGFILE%"
-pushd "%REPO_DIR%"
-call "%VENV_ACT%" >> "%LOGFILE%" 2>&1
+pushd "%PROJ%" >NUL
+echo [%date% %time%] Iniciando Contacts...>"%LOG%"
+echo PY="%PY%" >>"%LOG%"
+echo SCRIPT="%SCRIPT%" >>"%LOG%"
 
-set /a ATTEMPT=1
-set "EXIT_CODE=1"
+"%PY%" "%SCRIPT%" >>"%LOG%" 2>&1
+set "EC=%ERRORLEVEL%"
 
-:loop
-echo [%date% %time%] Intento !ATTEMPT!/%RETRIES% >> "%LOGFILE%"
-python -u "%PY_SCRIPT%" >> "%LOGFILE%" 2>&1
-set "EXIT_CODE=%ERRORLEVEL%"
-if "%EXIT_CODE%"=="0" goto success
-if !ATTEMPT! GEQ %RETRIES% goto end
-echo [%date% %time%] Fallo intento !ATTEMPT! (ExitCode=%EXIT_CODE%). Esperando %SLEEP_SECS%s... >> "%LOGFILE%"
-powershell -NoProfile -Command "Start-Sleep -Seconds %SLEEP_SECS%"
-set /a ATTEMPT+=1
-goto loop
+if not "%EC%"=="0" (
+  echo [%date% %time%] Fallo ExitCode=%EC%. Reintento en 60s...>>"%LOG%"
+  timeout /t 60 /nobreak >NUL
+  "%PY%" "%SCRIPT%" >>"%LOG%" 2>&1
+  set "EC=%ERRORLEVEL%"
+)
 
-:success
-echo [%date% %time%] OK en intento !ATTEMPT!. >> "%LOGFILE%"
+if not defined EC set "EC=0"
+echo [%date% %time%] Finalizado Contacts. ExitCode=!EC!>>"%LOG%"
 
-:end
-echo [%date% %time%] Finalizado. ExitCode=%EXIT_CODE% >> "%LOGFILE%"
-popd
-exit /b %EXIT_CODE%
+popd >NUL
+del "%LOCK%" >NUL 2>&1
+
+REM --- Rotación de logs (>30 días)
+forfiles /P "%LOGDIR%" /M "contacts_incremental_*.log" /D -30 /C "cmd /c del @file" 2>NUL
+
+exit /b !EC!
